@@ -21,8 +21,10 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       - name: Install Dependencies
+        if: startsWith(matrix.os, 'ubuntu-')
         run: |
           sudo apt update
+          sudo apt upgrade -y
           sudo apt install libpipewire-0.3-dev
 
       - name: Build binary
