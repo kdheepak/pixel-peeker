@@ -1,0 +1,26 @@
+[package]
+name = "pixel-picker"
+version = "0.1.0"
+edition = "2024"
+description = "A pixel based color eye dropper picker"
+license = "EUPL-1.2"
+repository = "https://github.com/kdheepak/pixel-picker"
+homepage = "https://github.com/kdheepak/pixel-picker"
+documentation = "https://github.com/kdheepak/pixel-picker"
+readme = "README.md"
+
+[dependencies]
+device_query = "4.0.1"
+eframe = "0.32.0"
+egui = "0.32.0"
+xcap = { version = "0.6.2", features = ["image"] }
+
+[profile.release]
+debug = "full"
+
+[[bin]]
+name = "pixel-picker"
+path = "src/main.rs"
+
+[dev-dependencies]
+pretty_assertions = "1.4.1"
