@@ -25,6 +25,7 @@ struct PixelPickerApp {
     frozen_color: Option<Color32>,
     frozen_preview: Option<(Vec<u8>, u32, u32)>,
     space_pressed_last_frame: bool,
+    device_state: DeviceState,
 }
 
 impl eframe::App for PixelPickerApp {
@@ -36,9 +37,8 @@ impl eframe::App for PixelPickerApp {
                     .color(Color32::LIGHT_YELLOW),
             );
 
-            let device_state = DeviceState::new();
-            let mouse = device_state.get_mouse();
-            let keys = device_state.get_keys();
+            let mouse = self.device_state.get_mouse();
+            let keys = self.device_state.get_keys();
             let space_pressed = keys.contains(&Keycode::Space);
             let esc_pressed = keys.contains(&Keycode::Escape);
 
