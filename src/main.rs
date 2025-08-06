@@ -197,9 +197,9 @@ impl eframe::App for PixelPickerApp {
             // Status label
             ui.horizontal(|ui| {
                 let status_text = if is_frozen {
-                    "🧊 Frozen (press ESC to unfreeze)"
+                    "Frozen (press ESC to unfreeze)"
                 } else {
-                    "🎯 Live (press SPACE to freeze)"
+                    "Live (press SPACE to freeze)"
                 };
                 let status_color = if is_frozen {
                     Color32::from_rgb(100, 180, 255)
