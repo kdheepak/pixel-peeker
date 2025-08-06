@@ -201,18 +201,25 @@ impl eframe::App for PixelPickerApp {
 
                                 painter.rect_filled(cell_rect, 0.0, color);
 
+                                // Draw crosshair at center cell
                                 if x == width / 2 && y == height / 2 {
-                                    painter.rect_stroke(
-                                        cell_rect,
-                                        0.0,
+                                    let center = cell_rect.center();
+                                    let half = cell_size / 2.0;
+                                    // Vertical line
+                                    painter.line_segment(
+                                        [
+                                            Pos2::new(center.x, center.y - half),
+                                            Pos2::new(center.x, center.y + half),
+                                        ],
                                         Stroke::new(2.0, Color32::WHITE),
-                                        StrokeKind::Outside,
                                     );
-                                    painter.rect_stroke(
-                                        cell_rect.shrink(1.0),
-                                        0.0,
-                                        Stroke::new(1.0, Color32::BLACK),
-                                        StrokeKind::Outside,
+                                    // Horizontal line
+                                    painter.line_segment(
+                                        [
+                                            Pos2::new(center.x - half, center.y),
+                                            Pos2::new(center.x + half, center.y),
+                                        ],
+                                        Stroke::new(2.0, Color32::WHITE),
                                     );
                                 }
                             }
