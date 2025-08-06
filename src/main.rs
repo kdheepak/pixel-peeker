@@ -26,6 +26,7 @@ struct PixelPickerApp {
     frozen_preview: Option<(Vec<u8>, u32, u32)>,
     space_pressed_last_frame: bool,
     device_state: DeviceState,
+    color_history: Vec<Color32>,
 }
 
 impl eframe::App for PixelPickerApp {
@@ -55,6 +56,15 @@ impl eframe::App for PixelPickerApp {
                 self.frozen_position = Some((x, y));
                 self.frozen_color = get_color_at(x, y);
                 self.frozen_preview = get_preview_at(x, y, 21);
+                // Add to color history if new and not duplicate
+                if let Some(color) = self.frozen_color {
+                    if self.color_history.last().copied() != Some(color) {
+                        self.color_history.push(color);
+                        if self.color_history.len() > 10 {
+                            self.color_history.remove(0);
+                        }
+                    }
+                }
             } else if esc_pressed {
                 // Clear frozen state
                 self.frozen_position = None;
@@ -209,6 +219,43 @@ impl eframe::App for PixelPickerApp {
 
                 ui.colored_label(status_color, status_text);
             });
+
+            // Color history UI
+            if !self.color_history.is_empty() {
+                ui.label(egui::RichText::new("Color History:").color(Color32::LIGHT_YELLOW));
+                ui.horizontal_wrapped(|ui| {
+                    for color in &self.color_history {
+                        let swatch_size = Vec2::new(24.0, 18.0);
+                        let (resp, painter) =
+                            ui.allocate_painter(swatch_size, egui::Sense::click());
+                        painter.rect_filled(resp.rect, 3.0, *color);
+                        painter.rect_stroke(
+                            resp.rect,
+                            3.0,
+                            Stroke::new(1.0, Color32::GRAY),
+                            StrokeKind::Outside,
+                        );
+                        if resp.clicked() {
+                            ctx.copy_text(format!(
+                                "#{:02X}{:02X}{:02X}",
+                                color.r(),
+                                color.g(),
+                                color.b()
+                            ));
+                        }
+                        if resp.hovered() {
+                            ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+                        }
+                        resp.on_hover_text(format!(
+                            "Copy HEX: #{:02X}{:02X}{:02X}",
+                            color.r(),
+                            color.g(),
+                            color.b()
+                        ));
+                    }
+                });
+                ui.add_space(8.0);
+            }
         });
         ctx.request_repaint();
     }
