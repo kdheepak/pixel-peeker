@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.2.1](https://github.com/kdheepak/pixel-picker/compare/v0.2.0...v0.2.1) - 2025-08-07
+## [0.2.1](https://github.com/kdheepak/pixel-peeker/compare/v0.2.0...v0.2.1) - 2025-08-07
 
 ### Added
 
@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - *(main)* simplify app state and modularize color picking logic
 
-## [0.2.0](https://github.com/kdheepak/pixel-picker/compare/v0.1.1...v0.2.0) - 2025-08-07
+## [0.2.0](https://github.com/kdheepak/pixel-peeker/compare/v0.1.1...v0.2.0) - 2025-08-07
 
 ### Added
 
@@ -46,13 +46,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - *(deps)* update iced and tokio to latest versions and refactor for new iced API
 - *(main)* inline color and preview helpers for monitor capture
 
-## [0.1.1](https://github.com/kdheepak/pixel-picker/compare/v0.1.0...v0.1.1) - 2025-08-06
+## [0.1.1](https://github.com/kdheepak/pixel-peeker/compare/v0.1.0...v0.1.1) - 2025-08-06
 
 ### Other
 
 - *(readme)* add install instructions and build command
 - *(main)* remove emoji from status labels
-- *(deps)* bump softprops/action-gh-release from 1 to 2 ([#1](https://github.com/kdheepak/pixel-picker/pull/1))
+- *(deps)* bump softprops/action-gh-release from 1 to 2 ([#1](https://github.com/kdheepak/pixel-peeker/pull/1))
 - *(github-actions)* add PR title and breaking change check workflow
 - *(ci)* add release-plz workflow for automated releases
 - *(github)* add FUNDING.yml for GitHub Sponsors

@@ -15,7 +15,7 @@ const PREVIEW_CANVAS_SIZE: f32 = 168.0;
 
 fn main() -> iced::Result {
     let settings = Settings::load();
-    iced::application("Pixel Picker", App::update, App::view)
+    iced::application("Pixel Peeker", App::update, App::view)
         .subscription(App::subscription)
         .theme(|_| Theme::Dark)
         .window(create_window_settings(&settings))
@@ -103,31 +103,31 @@ impl Settings {
 
     fn get_settings_path() -> Option<std::path::PathBuf> {
         use directories::{BaseDirs, ProjectDirs, UserDirs};
-        if let Some(project_dir) = ProjectDirs::from("com", "kdheepak", "pixel-picker") {
+        if let Some(project_dir) = ProjectDirs::from("com", "kdheepak", "pixel-peeker") {
             Some(
                 project_dir
                     .config_dir()
-                    .join("pixel-picker")
-                    .join("pixel-picker.json"),
+                    .join("pixel-peeker")
+                    .join("pixel-peeker.json"),
             )
         } else if let Some(base_dir) = BaseDirs::new() {
             Some(
                 base_dir
                     .config_dir()
-                    .join("pixel-picker")
-                    .join("pixel-picker.json"),
+                    .join("pixel-peeker")
+                    .join("pixel-peeker.json"),
             )
         } else if let Some(home_dir) = UserDirs::new() {
             Some(
                 home_dir
                     .home_dir()
                     .join(".config")
-                    .join("pixel-picker")
-                    .join("pixel-picker.json"),
+                    .join("pixel-peeker")
+                    .join("pixel-peeker.json"),
             )
         } else {
             // Fallback to current directory
-            Some(std::path::PathBuf::from("pixel-picker").join("pixel-picker.json"))
+            Some(std::path::PathBuf::from("pixel-peeker").join("pixel-peeker.json"))
         }
     }
 }
@@ -512,7 +512,7 @@ impl App {
 
     // UI creation methods
     fn create_title(&self) -> Element<'_, Message> {
-        text("Pixel Picker")
+        text("Pixel Peeker")
             .size(20)
             .color(Color::from_rgb(1.0, 1.0, 0.8))
             .into()

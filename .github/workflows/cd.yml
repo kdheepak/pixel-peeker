@@ -34,7 +34,7 @@ jobs:
       - name: Prepare artifact
         run: |
           mkdir dist
-          cp target/release/pixel-picker* dist/
+          cp target/release/pixel-peeker* dist/
         shell: bash
 
       - name: Upload release asset

@@ -3493,7 +3493,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pixel-picker"
+name = "pixel-peeker"
 version = "0.2.1"
 dependencies = [
  "device_query",

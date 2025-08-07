@@ -1,12 +1,12 @@
 [package]
-name = "pixel-picker"
+name = "pixel-peeker"
 version = "0.2.1"
 edition = "2024"
-description = "A pixel based color eye dropper picker"
+description = "A color eye dropper picker"
 license = "EUPL-1.2"
-repository = "https://github.com/kdheepak/pixel-picker"
-homepage = "https://github.com/kdheepak/pixel-picker"
-documentation = "https://github.com/kdheepak/pixel-picker"
+repository = "https://github.com/kdheepak/pixel-peeker"
+homepage = "https://github.com/kdheepak/pixel-peeker"
+documentation = "https://github.com/kdheepak/pixel-peeker"
 readme = "README.md"
 
 [dependencies]
@@ -27,7 +27,7 @@ xcap = { version = "0.6.2", features = ["image"] }
 debug = "full"
 
 [[bin]]
-name = "pixel-picker"
+name = "pixel-peeker"
 path = "src/main.rs"
 
 [dev-dependencies]
