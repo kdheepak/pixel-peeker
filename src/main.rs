@@ -1,22 +1,18 @@
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use iced::widget::{button, canvas, container, text, Canvas, Column, Container, Row};
 use iced::{
-    executor, mouse, window, Application, Background, Color, Command, Element, Length,
-    Point, Rectangle, Renderer, Settings, Size, Subscription, Theme,
+    mouse, Background, Border, Color, Element, Length,
+    Point, Rectangle, Size, Subscription, Task, Theme, Renderer,
 };
 use std::time::Instant;
 use xcap::Monitor;
 
 fn main() -> iced::Result {
-    PixelPickerApp::run(Settings {
-        window: window::Settings {
-            size: (500, 400),
-            min_size: Some((400, 300)),
-            resizable: true,
-            ..Default::default()
-        },
-        ..Default::default()
-    })
+    iced::application("PixelPicker", PixelPickerApp::update, PixelPickerApp::view)
+        .subscription(PixelPickerApp::subscription)
+        .theme(|_| Theme::Dark)
+        .window_size(Size::new(500.0, 400.0))
+        .run()
 }
 
 #[derive(Debug, Clone)]
@@ -39,61 +35,12 @@ struct PixelPickerApp {
     color_history: Vec<Color>,
 }
 
-struct ColorSwatchStyle {
-    color: Color,
-}
-
-impl iced::widget::container::StyleSheet for ColorSwatchStyle {
-    type Style = iced::Theme;
-
-    fn appearance(&self, _style: &Self::Style) -> iced::widget::container::Appearance {
-        iced::widget::container::Appearance {
-            background: Some(Background::Color(self.color)),
-            border_radius: 4.0.into(),
-            border_width: 1.0,
-            border_color: Color::from_rgb(0.5, 0.5, 0.5),
-            text_color: None,
-        }
-    }
-}
-
-struct ColorButtonStyle {
-    color: Color,
-}
-
-impl iced::widget::button::StyleSheet for ColorButtonStyle {
-    type Style = iced::Theme;
-
-    fn active(&self, _style: &Self::Style) -> iced::widget::button::Appearance {
-        iced::widget::button::Appearance {
-            background: Some(Background::Color(self.color)),
-            border_radius: 3.0.into(),
-            border_width: 1.0,
-            border_color: Color::from_rgb(0.5, 0.5, 0.5),
-            ..Default::default()
-        }
-    }
-}
-
-impl Application for PixelPickerApp {
-    type Message = Message;
-    type Theme = Theme;
-    type Executor = executor::Default;
-    type Flags = ();
-
-    fn new(_flags: ()) -> (Self, Command<Message>) {
-        (Self::default(), Command::none())
-    }
-
-    fn title(&self) -> String {
-        "PixelPicker".to_string()
-    }
-
-    fn update(&mut self, message: Message) -> Command<Message> {
+impl PixelPickerApp {
+    fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::Tick(_) => {
                 self.update_color_picking();
-                Command::none()
+                Task::none()
             }
             Message::CopyRgb => {
                 if let Some(color) = self.selected_color {
@@ -105,7 +52,7 @@ impl Application for PixelPickerApp {
                     );
                     iced::clipboard::write(rgb_string)
                 } else {
-                    Command::none()
+                    Task::none()
                 }
             }
             Message::CopyHex => {
@@ -118,7 +65,7 @@ impl Application for PixelPickerApp {
                     );
                     iced::clipboard::write(hex_string)
                 } else {
-                    Command::none()
+                    Task::none()
                 }
             }
             Message::HistoryColorClicked(color) => {
@@ -136,7 +83,7 @@ impl Application for PixelPickerApp {
     fn view(&self) -> Element<'_, Message> {
         let title = text("PixelPicker")
             .size(20)
-            .style(iced::theme::Text::Color(Color::from_rgb(1.0, 1.0, 0.8)));
+            .color(Color::from_rgb(1.0, 1.0, 0.8));
 
         let mut content = Column::new().spacing(10).push(title);
 
@@ -161,12 +108,21 @@ impl Application for PixelPickerApp {
 
             if let Some(color) = self.selected_color {
                 info_column = info_column
-                    .push(text("Mouse Position:").style(iced::theme::Text::Color(Color::from_rgb(1.0, 1.0, 0.8))))
+                    .push(text("Mouse Position:").color(Color::from_rgb(1.0, 1.0, 0.8)))
                     .push(text(format!("({}, {})", display_x, display_y)).size(14))
-                    .push(text("Picked Color:").style(iced::theme::Text::Color(Color::from_rgb(1.0, 1.0, 0.8))))
+                    .push(text("Picked Color:").color(Color::from_rgb(1.0, 1.0, 0.8)))
                     .push(
                         container(text("   "))
-                            .style(iced::theme::Container::Custom(Box::new(ColorSwatchStyle { color })))
+                            .style(move |_theme: &Theme| container::Style {
+                                background: Some(Background::Color(color)),
+                                border: Border {
+                                    color: Color::from_rgb(0.5, 0.5, 0.5),
+                                    width: 1.0,
+                                    radius: 4.0.into(),
+                                },
+                                shadow: Default::default(),
+                                text_color: None,
+                            })
                             .width(Length::Fixed(60.0))
                             .height(Length::Fixed(30.0)),
                     )
@@ -227,16 +183,25 @@ impl Application for PixelPickerApp {
             Color::from_rgb(0.4, 1.0, 0.6)
         };
 
-        content = content.push(text(status_text).style(iced::theme::Text::Color(status_color)));
+        content = content.push(text(status_text).color(status_color));
 
         if !self.color_history.is_empty() {
-            content = content.push(text("Color History:").style(iced::theme::Text::Color(Color::from_rgb(1.0, 1.0, 0.8))));
+            content = content.push(text("Color History:").color(Color::from_rgb(1.0, 1.0, 0.8)));
 
             let mut history_row = Row::new().spacing(5);
             for color in &self.color_history {
                 let color_button = button(text("   "))
                     .on_press(Message::HistoryColorClicked(*color))
-                    .style(iced::theme::Button::Custom(Box::new(ColorButtonStyle { color: *color })))
+                    .style(move |_theme: &Theme, _status| button::Style {
+                        background: Some(Background::Color(*color)),
+                        border: Border {
+                            color: Color::from_rgb(0.5, 0.5, 0.5),
+                            width: 1.0,
+                            radius: 3.0.into(),
+                        },
+                        shadow: Default::default(),
+                        text_color: Color::BLACK,
+                    })
                     .width(Length::Fixed(24.0))
                     .height(Length::Fixed(18.0));
                 history_row = history_row.push(color_button);
@@ -256,12 +221,6 @@ impl Application for PixelPickerApp {
             .map(Message::Tick)
     }
 
-    fn theme(&self) -> Theme {
-        Theme::Dark
-    }
-}
-
-impl PixelPickerApp {
     fn update_color_picking(&mut self) {
         let keys = self.device_state.get_keys();
         let space_pressed = keys.contains(&Keycode::Space);
