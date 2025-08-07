@@ -413,11 +413,55 @@ impl PixelPickerApp {
                         && y >= mon_y
                         && y < mon_y + mon_height as i32
                     {
-                        // Try to capture, but don't block if it fails
-                        if let Ok(image) = monitor.capture_image() {
-                            self.selected_color = self.get_color_from_image(&monitor, &image, x, y);
-                            self.preview_image =
-                                self.get_preview_from_image(&monitor, &image, x, y, 21);
+                        // Calculate capture region around the cursor
+                        let preview_size = 21i32;
+                        let half_size = preview_size / 2;
+
+                        // Convert screen coordinates to monitor-relative coordinates
+                        let relative_x = x - mon_x;
+                        let relative_y = y - mon_y;
+
+                        // Calculate region bounds, ensuring they stay within monitor bounds
+                        let region_x = (relative_x - half_size).max(0) as u32;
+                        let region_y = (relative_y - half_size).max(0) as u32;
+                        let region_width =
+                            preview_size.min(mon_width as i32 - region_x as i32).max(1) as u32;
+                        let region_height =
+                            preview_size.min(mon_height as i32 - region_y as i32).max(1) as u32;
+
+                        // Capture only the region around the cursor
+                        if let Ok(image) =
+                            monitor.capture_region(region_x, region_y, region_width, region_height)
+                        {
+                            // Calculate the pixel position within the captured region
+                            let pixel_x_in_region = (relative_x - region_x as i32)
+                                .max(0)
+                                .min(region_width as i32 - 1)
+                                as u32;
+                            let pixel_y_in_region = (relative_y - region_y as i32)
+                                .max(0)
+                                .min(region_height as i32 - 1)
+                                as u32;
+
+                            // Get the color at the cursor position
+                            if pixel_x_in_region < image.width()
+                                && pixel_y_in_region < image.height()
+                            {
+                                let pixel = image.get_pixel(pixel_x_in_region, pixel_y_in_region);
+                                self.selected_color = Some(Color::from_rgb(
+                                    pixel[0] as f32 / 255.0,
+                                    pixel[1] as f32 / 255.0,
+                                    pixel[2] as f32 / 255.0,
+                                ));
+                            }
+
+                            // Create preview from the captured region
+                            self.preview_image = self.create_preview_from_region(
+                                &image,
+                                pixel_x_in_region,
+                                pixel_y_in_region,
+                                preview_size as u32,
+                            );
                         }
                         break;
                     }
@@ -437,11 +481,55 @@ impl PixelPickerApp {
                         && y >= mon_y
                         && y < mon_y + mon_height as i32
                     {
-                        // Try to capture, but don't block if it fails
-                        if let Ok(image) = monitor.capture_image() {
-                            self.selected_color = self.get_color_from_image(&monitor, &image, x, y);
-                            self.preview_image =
-                                self.get_preview_from_image(&monitor, &image, x, y, 21);
+                        // Calculate capture region around the cursor
+                        let preview_size = 21i32;
+                        let half_size = preview_size / 2;
+
+                        // Convert screen coordinates to monitor-relative coordinates
+                        let relative_x = x - mon_x;
+                        let relative_y = y - mon_y;
+
+                        // Calculate region bounds, ensuring they stay within monitor bounds
+                        let region_x = (relative_x - half_size).max(0) as u32;
+                        let region_y = (relative_y - half_size).max(0) as u32;
+                        let region_width =
+                            preview_size.min(mon_width as i32 - region_x as i32).max(1) as u32;
+                        let region_height =
+                            preview_size.min(mon_height as i32 - region_y as i32).max(1) as u32;
+
+                        // Capture only the region around the cursor
+                        if let Ok(image) =
+                            monitor.capture_region(region_x, region_y, region_width, region_height)
+                        {
+                            // Calculate the pixel position within the captured region
+                            let pixel_x_in_region = (relative_x - region_x as i32)
+                                .max(0)
+                                .min(region_width as i32 - 1)
+                                as u32;
+                            let pixel_y_in_region = (relative_y - region_y as i32)
+                                .max(0)
+                                .min(region_height as i32 - 1)
+                                as u32;
+
+                            // Get the color at the cursor position
+                            if pixel_x_in_region < image.width()
+                                && pixel_y_in_region < image.height()
+                            {
+                                let pixel = image.get_pixel(pixel_x_in_region, pixel_y_in_region);
+                                self.selected_color = Some(Color::from_rgb(
+                                    pixel[0] as f32 / 255.0,
+                                    pixel[1] as f32 / 255.0,
+                                    pixel[2] as f32 / 255.0,
+                                ));
+                            }
+
+                            // Create preview from the captured region
+                            self.preview_image = self.create_preview_from_region(
+                                &image,
+                                pixel_x_in_region,
+                                pixel_y_in_region,
+                                preview_size as u32,
+                            );
                         }
                         break;
                     }
@@ -450,79 +538,36 @@ impl PixelPickerApp {
         }
     }
 
-    fn get_color_from_image(
+    /// Creates a preview image from the captured region, centered on the specified pixel
+    fn create_preview_from_region(
         &self,
-        monitor: &Monitor,
         image: &xcap::image::RgbaImage,
-        screen_x: i32,
-        screen_y: i32,
-    ) -> Option<Color> {
-        let mon_x = monitor.x().ok()?;
-        let mon_y = monitor.y().ok()?;
-        let mon_width = monitor.width().ok()?;
-        let mon_height = monitor.height().ok()?;
-
-        let relative_x = screen_x - mon_x;
-        let relative_y = screen_y - mon_y;
-        let scale_x = image.width() as f64 / mon_width as f64;
-        let scale_y = image.height() as f64 / mon_height as f64;
-        let image_x = (relative_x as f64 * scale_x).round() as u32;
-        let image_y = (relative_y as f64 * scale_y).round() as u32;
-
-        if image_x < image.width() && image_y < image.height() {
-            let pixel = image.get_pixel(image_x, image_y);
-            Some(Color::from_rgb(
-                pixel[0] as f32 / 255.0,
-                pixel[1] as f32 / 255.0,
-                pixel[2] as f32 / 255.0,
-            ))
-        } else {
-            None
-        }
-    }
-
-    fn get_preview_from_image(
-        &self,
-        monitor: &Monitor,
-        image: &xcap::image::RgbaImage,
-        screen_x: i32,
-        screen_y: i32,
+        center_x: u32,
+        center_y: u32,
         size: u32,
     ) -> Option<(Vec<u8>, u32, u32)> {
-        let mon_x = monitor.x().ok()?;
-        let mon_y = monitor.y().ok()?;
-        let mon_width = monitor.width().ok()?;
-        let mon_height = monitor.height().ok()?;
-
         let half_size = (size / 2) as i32;
         let mut rgb_data = Vec::new();
-        let scale_x = image.width() as f64 / mon_width as f64;
-        let scale_y = image.height() as f64 / mon_height as f64;
 
         for dy in -half_size..=half_size {
             for dx in -half_size..=half_size {
-                let sample_x = screen_x + dx;
-                let sample_y = screen_y + dy;
-                if sample_x >= mon_x
-                    && sample_x < mon_x + mon_width as i32
-                    && sample_y >= mon_y
-                    && sample_y < mon_y + mon_height as i32
+                let sample_x = center_x as i32 + dx;
+                let sample_y = center_y as i32 + dy;
+
+                if sample_x >= 0
+                    && sample_y >= 0
+                    && sample_x < image.width() as i32
+                    && sample_y < image.height() as i32
                 {
-                    let relative_x = sample_x - mon_x;
-                    let relative_y = sample_y - mon_y;
-                    let image_x = (relative_x as f64 * scale_x).round() as u32;
-                    let image_y = (relative_y as f64 * scale_y).round() as u32;
-                    if image_x < image.width() && image_y < image.height() {
-                        let pixel = image.get_pixel(image_x, image_y);
-                        rgb_data.extend_from_slice(&[pixel[0], pixel[1], pixel[2]]);
-                    } else {
-                        rgb_data.extend_from_slice(&[0, 0, 0]);
-                    }
+                    let pixel = image.get_pixel(sample_x as u32, sample_y as u32);
+                    rgb_data.extend_from_slice(&[pixel[0], pixel[1], pixel[2]]);
                 } else {
+                    // Fill with black for areas outside the captured region
                     rgb_data.extend_from_slice(&[0, 0, 0]);
                 }
             }
         }
+
         Some((rgb_data, size, size))
     }
 }
