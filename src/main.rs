@@ -5,6 +5,7 @@ use iced::{
     Task, Theme, mouse, window,
 };
 use palette::{Hsl, Hsv, IntoColor, Oklch, Srgb};
+use serde::{Deserialize, Serialize};
 use std::time::Instant;
 use xcap::Monitor;
 
@@ -13,18 +14,135 @@ const MAX_COLOR_HISTORY: usize = 10;
 const PREVIEW_CANVAS_SIZE: f32 = 168.0;
 
 fn main() -> iced::Result {
+    let settings = Settings::load();
     iced::application("Pixel Picker", App::update, App::view)
         .subscription(App::subscription)
         .theme(|_| Theme::Dark)
-        .window(create_window_settings())
-        .run()
+        .window(create_window_settings(&settings))
+        .run_with(move || (App::new(settings), Task::none()))
 }
 
-fn create_window_settings() -> window::Settings {
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct Settings {
+    window_width: f32,
+    window_height: f32,
+    window_x: Option<i32>,
+    window_y: Option<i32>,
+    color_history: Vec<SerializableColor>,
+    zoom_factor: f32,
+    always_on_top: bool,
+
+    #[serde(skip)]
+    path: Option<std::path::PathBuf>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct SerializableColor {
+    r: f32,
+    g: f32,
+    b: f32,
+}
+
+impl From<Color> for SerializableColor {
+    fn from(color: Color) -> Self {
+        Self {
+            r: color.r,
+            g: color.g,
+            b: color.b,
+        }
+    }
+}
+
+impl From<SerializableColor> for Color {
+    fn from(color: SerializableColor) -> Self {
+        Color::from_rgb(color.r, color.g, color.b)
+    }
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            window_width: 600.0,
+            window_height: 500.0,
+            window_x: None,
+            window_y: None,
+            color_history: Vec::new(),
+            zoom_factor: 1.0,
+            always_on_top: true,
+            path: None,
+        }
+    }
+}
+
+impl Settings {
+    fn load() -> Self {
+        if let Some(settings_path) = Self::get_settings_path() {
+            if let Ok(contents) = std::fs::read_to_string(&settings_path) {
+                if let Ok(mut settings) = serde_json::from_str::<Settings>(&contents) {
+                    settings.path = Some(settings_path);
+                    return settings;
+                }
+            }
+        }
+        Self::default()
+    }
+
+    fn save(&self) -> Result<(), Box<dyn std::error::Error>> {
+        let settings_path =
+            Self::get_settings_path().ok_or("Could not determine settings directory")?;
+
+        // Create directory if it doesn't exist
+        if let Some(parent) = settings_path.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+
+        let contents = serde_json::to_string_pretty(self)?;
+        std::fs::write(&settings_path, contents)?;
+        Ok(())
+    }
+
+    fn get_settings_path() -> Option<std::path::PathBuf> {
+        use directories::{BaseDirs, ProjectDirs, UserDirs};
+        if let Some(project_dir) = ProjectDirs::from("com", "kdheepak", "pixel-picker") {
+            Some(
+                project_dir
+                    .config_dir()
+                    .join("pixel-picker")
+                    .join("pixel-picker.json"),
+            )
+        } else if let Some(base_dir) = BaseDirs::new() {
+            Some(
+                base_dir
+                    .config_dir()
+                    .join("pixel-picker")
+                    .join("pixel-picker.json"),
+            )
+        } else if let Some(home_dir) = UserDirs::new() {
+            Some(
+                home_dir
+                    .home_dir()
+                    .join(".config")
+                    .join("pixel-picker")
+                    .join("pixel-picker.json"),
+            )
+        } else {
+            // Fallback to current directory
+            Some(std::path::PathBuf::from("pixel-picker").join("pixel-picker.json"))
+        }
+    }
+}
+
+fn create_window_settings(settings: &Settings) -> window::Settings {
+    let position = if let (Some(x), Some(y)) = (settings.window_x, settings.window_y) {
+        window::Position::Specific(iced::Point::new(x as f32, y as f32))
+    } else {
+        window::Position::default()
+    };
+
     window::Settings {
-        size: Size::new(600.0, 500.0),
-        position: window::Position::default(),
-        min_size: None,
+        size: Size::new(settings.window_width, settings.window_height),
+        position: position,
+        min_size: Some(Size::new(400.0, 300.0)),
         max_size: None,
         visible: true,
         resizable: true,
@@ -43,6 +161,12 @@ pub enum Message {
     CopyColor(ColorFormat),
     HistoryColorClicked(Color),
     ZoomFactor(f32),
+    WindowResized(Size),
+    WindowMoved(iced::Point),
+    ToggleAlwaysOnTop,
+    ClearHistory,
+    SaveSettings,
+    WindowEvent(window::Event),
 }
 
 #[derive(Debug, Clone)]
@@ -68,41 +192,117 @@ struct PreviewData {
     height: u32,
 }
 
-struct App {
-    current_color: Option<ColorInfo>,
-    frozen_color: Option<ColorInfo>,
-    input_state: InputState,
-    color_history: Vec<Color>,
-    zoom_factor: f32,
-}
-
-impl Default for App {
-    fn default() -> Self {
-        Self {
-            current_color: None,
-            frozen_color: None,
-            input_state: InputState::default(),
-            color_history: Vec::new(),
-            zoom_factor: 1.0,
-        }
-    }
-}
-
 #[derive(Default)]
 struct InputState {
     space_pressed_last_frame: bool,
     device_state: DeviceState,
 }
 
+struct App {
+    current_color: Option<ColorInfo>,
+    frozen_color: Option<ColorInfo>,
+    input_state: InputState,
+    color_history: Vec<Color>,
+    zoom_factor: f32,
+    settings: Settings,
+    settings_dirty: bool,
+}
+
 impl App {
+    fn new(settings: Settings) -> Self {
+        let color_history: Vec<Color> = settings
+            .color_history
+            .iter()
+            .map(|c| Color::from(c.clone()))
+            .collect();
+
+        Self {
+            current_color: None,
+            frozen_color: None,
+            input_state: InputState::default(),
+            color_history,
+            zoom_factor: settings.zoom_factor,
+            settings,
+            settings_dirty: false,
+        }
+    }
+
+    fn update_settings(&mut self) {
+        self.settings.color_history = self
+            .color_history
+            .iter()
+            .map(|c| SerializableColor::from(*c))
+            .collect();
+        self.settings.zoom_factor = self.zoom_factor;
+        self.settings_dirty = true;
+    }
+
+    fn save_settings_if_dirty(&mut self) {
+        if self.settings_dirty {
+            if let Err(e) = self.settings.save() {
+                eprintln!("Failed to save settings: {}", e);
+            }
+            self.settings_dirty = false;
+        }
+    }
+
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
             Message::ZoomFactor(zoom_factor) => {
                 self.zoom_factor = zoom_factor;
+                self.update_settings();
+                Task::none()
+            }
+            Message::WindowResized(size) => {
+                self.settings.window_width = size.width;
+                self.settings.window_height = size.height;
+                self.settings_dirty = true;
+                Task::none()
+            }
+            Message::WindowMoved(position) => {
+                self.settings.window_x = Some(position.x as i32);
+                self.settings.window_y = Some(position.y as i32);
+                self.settings_dirty = true;
+                Task::none()
+            }
+            Message::WindowEvent(event) => {
+                match event {
+                    window::Event::Resized(size) => {
+                        return self.update(Message::WindowResized(size));
+                    }
+                    window::Event::Moved(position) => {
+                        return self.update(Message::WindowMoved(position));
+                    }
+                    window::Event::CloseRequested => {
+                        self.save_settings_if_dirty();
+                    }
+                    _ => {}
+                }
+                Task::none()
+            }
+            Message::ToggleAlwaysOnTop => {
+                self.settings.always_on_top = !self.settings.always_on_top;
+                self.settings_dirty = true;
+                // Note: Changing always on top requires window recreation in most cases
+                // This would need additional implementation to take effect immediately
+                Task::none()
+            }
+            Message::ClearHistory => {
+                self.color_history.clear();
+                self.update_settings();
+                Task::none()
+            }
+            Message::SaveSettings => {
+                self.save_settings_if_dirty();
                 Task::none()
             }
             Message::Tick(_) => {
                 self.update_color_picking();
+                // Periodically save settings (every few seconds when dirty)
+                if self.settings_dirty {
+                    // You might want to add a timer here to avoid saving too frequently
+                    self.save_settings_if_dirty();
+                }
                 Task::none()
             }
             Message::CopyColor(format) => {
