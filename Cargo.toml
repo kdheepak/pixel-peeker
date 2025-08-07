@@ -11,8 +11,8 @@ readme = "README.md"
 
 [dependencies]
 device_query = "4.0.1"
-eframe = "0.32.0"
-egui = "0.32.0"
+iced = { version = "0.10", features = ["canvas", "tokio"] }
+tokio = { version = "1.0", features = ["full"] }
 xcap = { version = "0.6.2", features = ["image"] }
 
 [profile.release]
