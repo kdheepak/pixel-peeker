@@ -33,6 +33,9 @@ pub enum Message {
     Tick(Instant),
     CopyRgb,
     CopyHex,
+    CopyHsv,
+    CopyHsl,
+    CopyCmyk,
     HistoryColorClicked(Color),
 }
 
@@ -46,6 +49,7 @@ struct PixelPickerApp {
     space_pressed_last_frame: bool,
     device_state: DeviceState,
     color_history: Vec<Color>,
+    last_capture_time: Option<Instant>,
 }
 
 impl PixelPickerApp {
@@ -81,6 +85,51 @@ impl PixelPickerApp {
                     Task::none()
                 }
             }
+            Message::CopyHsv => {
+                if let Some(color) = self.selected_color {
+                    let (h, s, v) = rgb_to_hsv(
+                        (color.r * 255.0) as u8,
+                        (color.g * 255.0) as u8,
+                        (color.b * 255.0) as u8,
+                    );
+                    let hsv_string = format!("{:.0}°, {:.0}%, {:.0}%", h, s * 100.0, v * 100.0);
+                    iced::clipboard::write(hsv_string)
+                } else {
+                    Task::none()
+                }
+            }
+            Message::CopyHsl => {
+                if let Some(color) = self.selected_color {
+                    let (h, s, l) = rgb_to_hsl(
+                        (color.r * 255.0) as u8,
+                        (color.g * 255.0) as u8,
+                        (color.b * 255.0) as u8,
+                    );
+                    let hsl_string = format!("{:.0}°, {:.0}%, {:.0}%", h, s * 100.0, l * 100.0);
+                    iced::clipboard::write(hsl_string)
+                } else {
+                    Task::none()
+                }
+            }
+            Message::CopyCmyk => {
+                if let Some(color) = self.selected_color {
+                    let (c, m, y, k) = rgb_to_cmyk(
+                        (color.r * 255.0) as u8,
+                        (color.g * 255.0) as u8,
+                        (color.b * 255.0) as u8,
+                    );
+                    let cmyk_string = format!(
+                        "{:.0}%, {:.0}%, {:.0}%, {:.0}%",
+                        c * 100.0,
+                        m * 100.0,
+                        y * 100.0,
+                        k * 100.0
+                    );
+                    iced::clipboard::write(cmyk_string)
+                } else {
+                    Task::none()
+                }
+            }
             Message::HistoryColorClicked(color) => {
                 // Freeze the selected color from history
                 self.selected_color = Some(color);
@@ -90,6 +139,15 @@ impl PixelPickerApp {
                 Task::none()
             }
         }
+    }
+
+    /// Helper function to extract monitor properties safely
+    fn get_monitor_info(&self, monitor: &Monitor) -> Option<(i32, i32, u32, u32)> {
+        let x = monitor.x().ok()?;
+        let y = monitor.y().ok()?;
+        let width = monitor.width().ok()?;
+        let height = monitor.height().ok()?;
+        Some((x, y, width, height))
     }
 
     fn view(&self) -> Element<'_, Message> {
@@ -138,37 +196,95 @@ impl PixelPickerApp {
                             .width(Length::Fixed(60.0))
                             .height(Length::Fixed(30.0)),
                     )
-                    .push(text(format!(
-                        "RGB: ({}, {}, {})",
-                        (color.r * 255.0) as u8,
-                        (color.g * 255.0) as u8,
-                        (color.b * 255.0) as u8
-                    )))
-                    .push(text(format!(
-                        "HEX: #{:02X}{:02X}{:02X}",
-                        (color.r * 255.0) as u8,
-                        (color.g * 255.0) as u8,
-                        (color.b * 255.0) as u8
-                    )));
+                    .push(
+                        Row::new()
+                            .spacing(10)
+                            .push(
+                                text(format!(
+                                    "RGB: ({}, {}, {})",
+                                    (color.r * 255.0) as u8,
+                                    (color.g * 255.0) as u8,
+                                    (color.b * 255.0) as u8
+                                ))
+                                .width(Length::Fill),
+                            )
+                            .push(button("Copy").on_press(Message::CopyRgb)),
+                    )
+                    .push(
+                        Row::new()
+                            .spacing(10)
+                            .push(
+                                text(format!(
+                                    "HEX: #{:02X}{:02X}{:02X}",
+                                    (color.r * 255.0) as u8,
+                                    (color.g * 255.0) as u8,
+                                    (color.b * 255.0) as u8
+                                ))
+                                .width(Length::Fill),
+                            )
+                            .push(button("Copy").on_press(Message::CopyHex)),
+                    );
 
                 let (h, s, v) = rgb_to_hsv(
                     (color.r * 255.0) as u8,
                     (color.g * 255.0) as u8,
                     (color.b * 255.0) as u8,
                 );
-                info_column = info_column.push(text(format!(
-                    "HSV: ({:.0}°, {:.0}%, {:.0}%)",
-                    h,
-                    s * 100.0,
-                    v * 100.0
-                )));
+                info_column = info_column.push(
+                    Row::new()
+                        .spacing(10)
+                        .push(
+                            text(format!(
+                                "HSV: ({:.0}°, {:.0}%, {:.0}%)",
+                                h,
+                                s * 100.0,
+                                v * 100.0
+                            ))
+                            .width(Length::Fill),
+                        )
+                        .push(button("Copy").on_press(Message::CopyHsv)),
+                );
 
-                let button_row = Row::new()
-                    .spacing(10)
-                    .push(button("Copy RGB").on_press(Message::CopyRgb))
-                    .push(button("Copy HEX").on_press(Message::CopyHex));
+                let (h, s, l) = rgb_to_hsl(
+                    (color.r * 255.0) as u8,
+                    (color.g * 255.0) as u8,
+                    (color.b * 255.0) as u8,
+                );
+                info_column = info_column.push(
+                    Row::new()
+                        .spacing(10)
+                        .push(
+                            text(format!(
+                                "HSL: ({:.0}°, {:.0}%, {:.0}%)",
+                                h,
+                                s * 100.0,
+                                l * 100.0
+                            ))
+                            .width(Length::Fill),
+                        )
+                        .push(button("Copy").on_press(Message::CopyHsl)),
+                );
 
-                info_column = info_column.push(button_row);
+                let (c, m, y, k) = rgb_to_cmyk(
+                    (color.r * 255.0) as u8,
+                    (color.g * 255.0) as u8,
+                    (color.b * 255.0) as u8,
+                );
+                info_column = info_column.push(
+                    Row::new()
+                        .spacing(10)
+                        .push(
+                            text(format!(
+                                "CMYK: ({:.0}%, {:.0}%, {:.0}%, {:.0}%)",
+                                c * 100.0,
+                                m * 100.0,
+                                y * 100.0,
+                                k * 100.0
+                            ))
+                            .width(Length::Fill),
+                        )
+                        .push(button("Copy").on_press(Message::CopyCmyk)),
+                );
             } else {
                 info_column = info_column.push(text("No color detected"));
             }
@@ -278,38 +394,33 @@ impl PixelPickerApp {
             return;
         }
 
+        // Throttle screen captures to improve performance
+        let now = Instant::now();
+        if let Some(last_capture) = self.last_capture_time {
+            if now.duration_since(last_capture).as_millis() < 50 {
+                return;
+            }
+        }
+        self.last_capture_time = Some(now);
+
         // Try to capture screen - but limit frequency to avoid performance issues
         if let Ok(monitors) = Monitor::all() {
             for monitor in monitors {
-                let mon_x = match monitor.x().ok() {
-                    Some(v) => v,
-                    None => continue,
-                };
-                let mon_y = match monitor.y().ok() {
-                    Some(v) => v,
-                    None => continue,
-                };
-                let mon_width = match monitor.width().ok() {
-                    Some(v) => v,
-                    None => continue,
-                };
-                let mon_height = match monitor.height().ok() {
-                    Some(v) => v,
-                    None => continue,
-                };
-
-                if x >= mon_x
-                    && x < mon_x + mon_width as i32
-                    && y >= mon_y
-                    && y < mon_y + mon_height as i32
+                if let Some((mon_x, mon_y, mon_width, mon_height)) = self.get_monitor_info(&monitor)
                 {
-                    // Try to capture, but don't block if it fails
-                    if let Ok(image) = monitor.capture_image() {
-                        self.selected_color = self.get_color_from_image(&monitor, &image, x, y);
-                        self.preview_image =
-                            self.get_preview_from_image(&monitor, &image, x, y, 21);
+                    if x >= mon_x
+                        && x < mon_x + mon_width as i32
+                        && y >= mon_y
+                        && y < mon_y + mon_height as i32
+                    {
+                        // Try to capture, but don't block if it fails
+                        if let Ok(image) = monitor.capture_image() {
+                            self.selected_color = self.get_color_from_image(&monitor, &image, x, y);
+                            self.preview_image =
+                                self.get_preview_from_image(&monitor, &image, x, y, 21);
+                        }
+                        break;
                     }
-                    break;
                 }
             }
         }
@@ -319,35 +430,21 @@ impl PixelPickerApp {
         // Try to capture screen at the specified position
         if let Ok(monitors) = Monitor::all() {
             for monitor in monitors {
-                let mon_x = match monitor.x().ok() {
-                    Some(v) => v,
-                    None => continue,
-                };
-                let mon_y = match monitor.y().ok() {
-                    Some(v) => v,
-                    None => continue,
-                };
-                let mon_width = match monitor.width().ok() {
-                    Some(v) => v,
-                    None => continue,
-                };
-                let mon_height = match monitor.height().ok() {
-                    Some(v) => v,
-                    None => continue,
-                };
-
-                if x >= mon_x
-                    && x < mon_x + mon_width as i32
-                    && y >= mon_y
-                    && y < mon_y + mon_height as i32
+                if let Some((mon_x, mon_y, mon_width, mon_height)) = self.get_monitor_info(&monitor)
                 {
-                    // Try to capture, but don't block if it fails
-                    if let Ok(image) = monitor.capture_image() {
-                        self.selected_color = self.get_color_from_image(&monitor, &image, x, y);
-                        self.preview_image =
-                            self.get_preview_from_image(&monitor, &image, x, y, 21);
+                    if x >= mon_x
+                        && x < mon_x + mon_width as i32
+                        && y >= mon_y
+                        && y < mon_y + mon_height as i32
+                    {
+                        // Try to capture, but don't block if it fails
+                        if let Ok(image) = monitor.capture_image() {
+                            self.selected_color = self.get_color_from_image(&monitor, &image, x, y);
+                            self.preview_image =
+                                self.get_preview_from_image(&monitor, &image, x, y, 21);
+                        }
+                        break;
                     }
-                    break;
                 }
             }
         }
@@ -497,6 +594,18 @@ impl<Message> canvas::Program<Message> for PreviewRenderer {
     }
 }
 
+/// Converts RGB color values to HSV color space
+///
+/// # Arguments
+/// * `r` - Red component (0-255)
+/// * `g` - Green component (0-255)
+/// * `b` - Blue component (0-255)
+///
+/// # Returns
+/// A tuple of (hue, saturation, value):
+/// * hue: 0.0-360.0 degrees
+/// * saturation: 0.0-1.0
+/// * value: 0.0-1.0
 fn rgb_to_hsv(r: u8, g: u8, b: u8) -> (f32, f32, f32) {
     let r = r as f32 / 255.0;
     let g = g as f32 / 255.0;
@@ -506,19 +615,74 @@ fn rgb_to_hsv(r: u8, g: u8, b: u8) -> (f32, f32, f32) {
     let min = r.min(g.min(b));
     let delta = max - min;
 
-    let h = if delta == 0.0 {
+    let h = if delta < f32::EPSILON {
         0.0
-    } else if max == r {
+    } else if (max - r).abs() < f32::EPSILON {
         60.0 * (((g - b) / delta) % 6.0)
-    } else if max == g {
+    } else if (max - g).abs() < f32::EPSILON {
         60.0 * ((b - r) / delta + 2.0)
     } else {
         60.0 * ((r - g) / delta + 4.0)
     };
 
     let h = if h < 0.0 { h + 360.0 } else { h };
-    let s = if max == 0.0 { 0.0 } else { delta / max };
+    let s = if max < f32::EPSILON { 0.0 } else { delta / max };
     let v = max;
 
     (h, s, v)
+}
+
+/// Converts RGB to HSL color space
+/// Returns (hue: 0.0-360.0, saturation: 0.0-1.0, lightness: 0.0-1.0)
+fn rgb_to_hsl(r: u8, g: u8, b: u8) -> (f32, f32, f32) {
+    let r = r as f32 / 255.0;
+    let g = g as f32 / 255.0;
+    let b = b as f32 / 255.0;
+
+    let max = r.max(g.max(b));
+    let min = r.min(g.min(b));
+    let delta = max - min;
+
+    let l = (max + min) / 2.0;
+
+    let s = if delta < f32::EPSILON {
+        0.0
+    } else if l < 0.5 {
+        delta / (max + min)
+    } else {
+        delta / (2.0 - max - min)
+    };
+
+    let h = if delta < f32::EPSILON {
+        0.0
+    } else if (max - r).abs() < f32::EPSILON {
+        60.0 * (((g - b) / delta) % 6.0)
+    } else if (max - g).abs() < f32::EPSILON {
+        60.0 * ((b - r) / delta + 2.0)
+    } else {
+        60.0 * ((r - g) / delta + 4.0)
+    };
+
+    let h = if h < 0.0 { h + 360.0 } else { h };
+    (h, s, l)
+}
+
+/// Converts RGB to CMYK color space
+/// Returns (cyan: 0.0-1.0, magenta: 0.0-1.0, yellow: 0.0-1.0, key: 0.0-1.0)
+fn rgb_to_cmyk(r: u8, g: u8, b: u8) -> (f32, f32, f32, f32) {
+    let r = r as f32 / 255.0;
+    let g = g as f32 / 255.0;
+    let b = b as f32 / 255.0;
+
+    let k = 1.0 - r.max(g.max(b));
+
+    if k >= 1.0 {
+        return (0.0, 0.0, 0.0, 1.0);
+    }
+
+    let c = (1.0 - r - k) / (1.0 - k);
+    let m = (1.0 - g - k) / (1.0 - k);
+    let y = (1.0 - b - k) / (1.0 - k);
+
+    (c, m, y, k)
 }
