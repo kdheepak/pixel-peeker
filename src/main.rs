@@ -93,42 +93,55 @@ impl Settings {
 
         // Create directory if it doesn't exist
         if let Some(parent) = settings_path.parent() {
-            std::fs::create_dir_all(parent)?;
+            std::fs::create_dir_all(parent)
+                .map_err(|e| format!("Failed to create settings directory: {}", e))?;
         }
 
         let contents = serde_json::to_string_pretty(self)?;
-        std::fs::write(&settings_path, contents)?;
+        std::fs::write(&settings_path, contents)
+            .map_err(|e| format!("Failed to write settings file: {}", e))?;
+
+        println!("Settings saved to: {:?}", settings_path);
+
         Ok(())
     }
 
     fn get_settings_path() -> Option<std::path::PathBuf> {
-        use directories::{BaseDirs, ProjectDirs, UserDirs};
-        if let Some(project_dir) = ProjectDirs::from("com", "kdheepak", "pixel-peeker") {
-            Some(
-                project_dir
-                    .config_dir()
-                    .join("pixel-peeker")
-                    .join("pixel-peeker.json"),
-            )
-        } else if let Some(base_dir) = BaseDirs::new() {
-            Some(
+        if let Some(project_dir) = directories::ProjectDirs::from("com", "kdheepak", "pixel-peeker")
+        {
+            return Some(project_dir.config_dir().join("pixel-peeker.json"));
+        }
+
+        if let Some(base_dir) = directories::BaseDirs::new() {
+            return Some(
                 base_dir
                     .config_dir()
                     .join("pixel-peeker")
                     .join("pixel-peeker.json"),
-            )
-        } else if let Some(home_dir) = UserDirs::new() {
-            Some(
-                home_dir
+            );
+        }
+
+        if let Some(user_dir) = directories::UserDirs::new() {
+            return Some(
+                user_dir
                     .home_dir()
                     .join(".config")
                     .join("pixel-peeker")
                     .join("pixel-peeker.json"),
-            )
-        } else {
-            // Fallback to current directory
-            Some(std::path::PathBuf::from("pixel-peeker").join("pixel-peeker.json"))
+            );
         }
+
+        // Try multiple fallback options for better compatibility
+        if let Ok(config_dir) = std::env::var("XDG_CONFIG_HOME") {
+            return Some(
+                std::path::PathBuf::from(config_dir)
+                    .join("pixel-peeker")
+                    .join("pixel-peeker.json"),
+            );
+        }
+
+        // Final fallback to current directory
+        Some(std::path::PathBuf::from("pixel-peeker.json"))
     }
 }
 
@@ -206,6 +219,7 @@ struct App {
     zoom_factor: f32,
     settings: Settings,
     settings_dirty: bool,
+    last_save_time: Instant,
 }
 
 impl App {
@@ -224,6 +238,7 @@ impl App {
             zoom_factor: settings.zoom_factor,
             settings,
             settings_dirty: false,
+            last_save_time: Instant::now(),
         }
     }
 
@@ -274,7 +289,12 @@ impl App {
                         return self.update(Message::WindowMoved(position));
                     }
                     window::Event::CloseRequested => {
+                        // Force save on exit
                         self.save_settings_if_dirty();
+                        // Also try to save synchronously as backup
+                        if let Err(e) = self.settings.save() {
+                            eprintln!("Final save failed: {}", e);
+                        }
                     }
                     _ => {}
                 }
@@ -290,17 +310,18 @@ impl App {
             Message::ClearHistory => {
                 self.color_history.clear();
                 self.update_settings();
+                // Save immediately when clearing history
+                self.save_settings_if_dirty();
                 Task::none()
             }
             Message::SaveSettings => {
                 self.save_settings_if_dirty();
                 Task::none()
             }
-            Message::Tick(_) => {
+            Message::Tick(now) => {
                 self.update_color_picking();
-                // Periodically save settings (every few seconds when dirty)
-                if self.settings_dirty {
-                    // You might want to add a timer here to avoid saving too frequently
+                // Save settings every 5 seconds if dirty
+                if self.settings_dirty && now.duration_since(self.last_save_time).as_secs() >= 5 {
                     self.save_settings_if_dirty();
                 }
                 Task::none()
@@ -436,6 +457,8 @@ impl App {
         if let Some(current) = &self.current_color {
             self.frozen_color = Some(current.clone());
             self.add_to_history(current.color);
+            // Save immediately when adding to history
+            self.save_settings_if_dirty();
         }
     }
 
