@@ -12,7 +12,7 @@ fn main() -> iced::Result {
         .subscription(PixelPickerApp::subscription)
         .theme(|_| Theme::Dark)
         .window(window::Settings {
-            size: Size::new(500.0, 400.0),
+            size: Size::new(500.0, 500.0),
             position: window::Position::default(),
             min_size: None,
             max_size: None,
