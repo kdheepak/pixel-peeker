@@ -152,12 +152,12 @@ impl App {
             .padding(20)
             .style(if self.is_frozen() {
                 |_: &Theme| container::Style {
-                    background: Some(Background::Color(Color::from_rgb(0.1, 0.1, 0.2))),
+                    background: Some(Background::Color(Color::from_rgb(0.05, 0.05, 0.05))),
                     ..Default::default()
                 }
             } else {
                 |_: &Theme| container::Style {
-                    background: Some(Background::Color(Color::from_rgb(0.05, 0.05, 0.05))),
+                    background: Some(Background::Color(Color::from_rgb(0.1, 0.1, 0.2))),
                     ..Default::default()
                 }
             })
@@ -337,13 +337,31 @@ impl App {
                 .into()
         };
 
+        let preview_with_shadow: Element<'_, Message> = Container::new(preview_canvas)
+            .style(|_theme: &Theme| container::Style {
+                shadow: iced::Shadow {
+                    color: Color::from_rgba(0.0, 0.0, 0.0, 0.5),
+                    offset: iced::Vector::new(4.0, 4.0),
+                    blur_radius: 8.0,
+                },
+                border: Border {
+                    color: Color::from_rgb(0.3, 0.3, 0.3),
+                    width: 1.0,
+                    radius: 6.0.into(),
+                },
+                background: Some(Background::Color(Color::from_rgb(0.1, 0.1, 0.1))),
+                ..Default::default()
+            })
+            .padding(4)
+            .into();
+
         let _zoom_slider = self.create_zoom_slider();
 
         let info_column = self.create_color_info_column(color_info);
 
         Row::new()
             .spacing(20)
-            .push(Column::new().push(preview_canvas))
+            .push(Column::new().push(preview_with_shadow))
             .push(info_column)
             .into()
     }
