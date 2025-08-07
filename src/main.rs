@@ -23,7 +23,7 @@ fn main() -> iced::Result {
 
 fn create_window_settings() -> window::Settings {
     window::Settings {
-        size: Size::new(500.0, 500.0),
+        size: Size::new(600.0, 500.0),
         position: window::Position::default(),
         min_size: None,
         max_size: None,
@@ -43,6 +43,7 @@ pub enum Message {
     Tick(Instant),
     CopyColor(ColorFormat),
     HistoryColorClicked(Color),
+    ZoomFactor(f32),
 }
 
 #[derive(Debug, Clone)]
@@ -68,13 +69,26 @@ struct PreviewData {
     height: u32,
 }
 
-#[derive(Default)]
 struct App {
     current_color: Option<ColorInfo>,
     frozen_color: Option<ColorInfo>,
     input_state: InputState,
     color_history: Vec<Color>,
     last_capture_time: Option<Instant>,
+    zoom_factor: f32,
+}
+
+impl Default for App {
+    fn default() -> Self {
+        Self {
+            current_color: None,
+            frozen_color: None,
+            input_state: InputState::default(),
+            color_history: Vec::new(),
+            last_capture_time: None,
+            zoom_factor: 1.0,
+        }
+    }
 }
 
 #[derive(Default)]
@@ -86,6 +100,10 @@ struct InputState {
 impl App {
     fn update(&mut self, message: Message) -> Task<Message> {
         match message {
+            Message::ZoomFactor(zoom_factor) => {
+                self.zoom_factor = zoom_factor;
+                Task::none()
+            }
             Message::Tick(_) => {
                 self.update_color_picking();
                 Task::none()
@@ -147,7 +165,9 @@ impl App {
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        iced::time::every(std::time::Duration::from_millis(33)).map(Message::Tick)
+        Subscription::batch([
+            iced::time::every(std::time::Duration::from_millis(33)).map(Message::Tick)
+        ])
     }
 
     fn update_color_picking(&mut self) {
@@ -305,6 +325,7 @@ impl App {
                 rgb_data: preview.rgb_data.clone(),
                 width: preview.width,
                 height: preview.height,
+                zoom_factor: self.zoom_factor,
             })
             .width(Length::Fixed(PREVIEW_CANVAS_SIZE))
             .height(Length::Fixed(PREVIEW_CANVAS_SIZE))
@@ -316,11 +337,13 @@ impl App {
                 .into()
         };
 
+        let _zoom_slider = self.create_zoom_slider();
+
         let info_column = self.create_color_info_column(color_info);
 
         Row::new()
             .spacing(20)
-            .push(preview_canvas)
+            .push(Column::new().push(preview_canvas))
             .push(info_column)
             .into()
     }
@@ -378,6 +401,17 @@ impl App {
             .push(text(label).width(Length::Fill))
             .push(button("Copy").on_press(Message::CopyColor(format)))
             .into()
+    }
+
+    fn create_zoom_slider(&self) -> Element<'_, Message> {
+        let zoom_ui = Column::new()
+            .spacing(10)
+            .push(iced::widget::Text::new(format!(
+                "Zoom: {:.1}×",
+                self.zoom_factor
+            )))
+            .push(iced::widget::slider(1.0..=5.0, self.zoom_factor, Message::ZoomFactor).step(0.1));
+        zoom_ui.into()
     }
 
     fn create_status_text(&self) -> Element<'_, Message> {
@@ -581,6 +615,7 @@ struct PreviewRenderer {
     rgb_data: Vec<u8>,
     width: u32,
     height: u32,
+    zoom_factor: f32,
 }
 
 impl<Message> canvas::Program<Message> for PreviewRenderer {
@@ -595,7 +630,7 @@ impl<Message> canvas::Program<Message> for PreviewRenderer {
         _cursor: mouse::Cursor,
     ) -> Vec<iced::widget::canvas::Geometry> {
         let mut frame = iced::widget::canvas::Frame::new(renderer, bounds.size());
-        let cell_size = bounds.width / self.width as f32;
+        let cell_size = (bounds.width / self.width as f32) * self.zoom_factor;
 
         for y in 0..self.height {
             for x in 0..self.width {
