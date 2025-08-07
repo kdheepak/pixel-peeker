@@ -254,12 +254,18 @@ impl App {
         if let Ok(monitors) = Monitor::all() {
             for monitor in monitors {
                 if let Some(region) = self.calculate_capture_region(&monitor, x, y) {
-                    if let Ok(image) =
-                        monitor.capture_region(region.x, region.y, region.width, region.height)
-                    {
-                        let pixel_pos = region.get_pixel_position(x, y);
-                        if let Some(color) = extract_color_at(&image, pixel_pos.0, pixel_pos.1) {
-                            let preview = create_preview(&image, pixel_pos.0, pixel_pos.1);
+                    if let Ok(image) = monitor.capture_region(
+                        region.x as u32,
+                        region.y as u32,
+                        region.width,
+                        region.height,
+                    ) {
+                        // Adjust center pixel based on offset
+                        let center_x = PREVIEW_SIZE / 2 - region.offset_x;
+                        let center_y = PREVIEW_SIZE / 2 - region.offset_y;
+
+                        if let Some(color) = extract_color_at(&image, center_x, center_y) {
+                            let preview = create_preview(&image, center_x, center_y);
                             self.current_color = Some(ColorInfo {
                                 color,
                                 position,
@@ -276,24 +282,31 @@ impl App {
     fn calculate_capture_region(&self, monitor: &Monitor, x: i32, y: i32) -> Option<CaptureRegion> {
         let bounds = MonitorBounds::from_monitor(monitor)?;
 
-        if !bounds.contains_point(x, y) {
-            return None;
-        }
-
-        let relative_pos = bounds.to_relative(x, y);
         let half_size = (PREVIEW_SIZE / 2) as i32;
 
-        let region_x = (relative_pos.0 - half_size).max(0) as u32;
-        let region_y = (relative_pos.1 - half_size).max(0) as u32;
-        let region_width = PREVIEW_SIZE.min(bounds.width - region_x).max(1);
-        let region_height = PREVIEW_SIZE.min(bounds.height - region_y).max(1);
+        // Start with ideal region centered at mouse
+        let region_x = x - half_size;
+        let region_y = y - half_size;
+
+        // Clamp region inside monitor bounds
+        let clamped_x = region_x
+            .max(bounds.x)
+            .min(bounds.x + bounds.width as i32 - PREVIEW_SIZE as i32);
+        let clamped_y = region_y
+            .max(bounds.y)
+            .min(bounds.y + bounds.height as i32 - PREVIEW_SIZE as i32);
+
+        // Calculate offset between requested and clamped (how much we shifted the region)
+        let offset_x = (clamped_x - region_x).max(0) as u32;
+        let offset_y = (clamped_y - region_y).max(0) as u32;
 
         Some(CaptureRegion {
-            x: region_x,
-            y: region_y,
-            width: region_width,
-            height: region_height,
-            monitor_bounds: bounds,
+            x: clamped_x,
+            y: clamped_y,
+            width: PREVIEW_SIZE,
+            height: PREVIEW_SIZE,
+            offset_x,
+            offset_y,
         })
     }
 
@@ -486,39 +499,16 @@ impl MonitorBounds {
             height: monitor.height().ok()?,
         })
     }
-
-    fn contains_point(&self, x: i32, y: i32) -> bool {
-        x >= self.x
-            && x < self.x + self.width as i32
-            && y >= self.y
-            && y < self.y + self.height as i32
-    }
-
-    fn to_relative(&self, x: i32, y: i32) -> (i32, i32) {
-        (x - self.x, y - self.y)
-    }
 }
 
 #[derive(Debug)]
 struct CaptureRegion {
-    x: u32,
-    y: u32,
+    x: i32,
+    y: i32,
     width: u32,
     height: u32,
-    monitor_bounds: MonitorBounds,
-}
-
-impl CaptureRegion {
-    fn get_pixel_position(&self, screen_x: i32, screen_y: i32) -> (u32, u32) {
-        let relative = self.monitor_bounds.to_relative(screen_x, screen_y);
-        let x = (relative.0 - self.x as i32)
-            .max(0)
-            .min(self.width as i32 - 1) as u32;
-        let y = (relative.1 - self.y as i32)
-            .max(0)
-            .min(self.height as i32 - 1) as u32;
-        (x, y)
-    }
+    offset_x: u32,
+    offset_y: u32,
 }
 
 fn extract_color_at(image: &xcap::image::RgbaImage, x: u32, y: u32) -> Option<Color> {
