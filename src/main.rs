@@ -8,7 +8,7 @@ use std::time::Instant;
 use xcap::Monitor;
 
 fn main() -> iced::Result {
-    iced::application("PixelPicker", PixelPickerApp::update, PixelPickerApp::view)
+    iced::application("Pixel Picker", PixelPickerApp::update, PixelPickerApp::view)
         .subscription(PixelPickerApp::subscription)
         .theme(|_| Theme::Dark)
         .window(window::Settings {
