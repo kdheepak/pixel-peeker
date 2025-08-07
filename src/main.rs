@@ -1,8 +1,8 @@
 use device_query::{DeviceQuery, DeviceState, Keycode};
-use iced::widget::{button, canvas, container, text, Canvas, Column, Container, Row};
+use iced::widget::{Canvas, Column, Container, Row, button, canvas, container, text};
 use iced::{
-    mouse, Background, Border, Color, Element, Length,
-    Point, Rectangle, Size, Subscription, Task, Theme, Renderer,
+    Background, Border, Color, Element, Length, Point, Rectangle, Renderer, Size, Subscription,
+    Task, Theme, mouse, window,
 };
 use std::time::Instant;
 use xcap::Monitor;
@@ -11,7 +11,20 @@ fn main() -> iced::Result {
     iced::application("PixelPicker", PixelPickerApp::update, PixelPickerApp::view)
         .subscription(PixelPickerApp::subscription)
         .theme(|_| Theme::Dark)
-        .window_size(Size::new(500.0, 400.0))
+        .window(window::Settings {
+            size: Size::new(500.0, 400.0),
+            position: window::Position::default(),
+            min_size: None,
+            max_size: None,
+            visible: true,
+            resizable: true,
+            decorations: true,
+            transparent: false,
+            level: window::Level::AlwaysOnTop,
+            icon: None,
+            platform_specific: Default::default(),
+            exit_on_close_request: true,
+        })
         .run()
 }
 
@@ -92,7 +105,7 @@ impl PixelPickerApp {
             let mouse = self.device_state.get_mouse();
             (mouse.coords.0, mouse.coords.1)
         });
-        
+
         content = content.push(text(format!("Mouse: ({}, {})", display_x, display_y)));
 
         if let Some((rgb_data, width, height)) = &self.preview_image {
@@ -217,8 +230,7 @@ impl PixelPickerApp {
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        iced::time::every(std::time::Duration::from_millis(33))
-            .map(Message::Tick)
+        iced::time::every(std::time::Duration::from_millis(33)).map(Message::Tick)
     }
 
     fn update_color_picking(&mut self) {
@@ -236,7 +248,8 @@ impl PixelPickerApp {
         if just_pressed {
             self.frozen_position = Some((x, y));
             // Don't immediately capture when freezing, use the last known values
-            if let (Some(color), Some(preview)) = (self.selected_color, self.preview_image.clone()) {
+            if let (Some(color), Some(preview)) = (self.selected_color, self.preview_image.clone())
+            {
                 self.frozen_color = Some(color);
                 self.frozen_preview = Some(preview);
                 if self.color_history.last().copied() != Some(color) {
@@ -278,7 +291,7 @@ impl PixelPickerApp {
                     Some(v) => v,
                     None => continue,
                 };
-                
+
                 if x >= mon_x
                     && x < mon_x + mon_width as i32
                     && y >= mon_y
@@ -287,7 +300,8 @@ impl PixelPickerApp {
                     // Try to capture, but don't block if it fails
                     if let Ok(image) = monitor.capture_image() {
                         self.selected_color = self.get_color_from_image(&monitor, &image, x, y);
-                        self.preview_image = self.get_preview_from_image(&monitor, &image, x, y, 21);
+                        self.preview_image =
+                            self.get_preview_from_image(&monitor, &image, x, y, 21);
                     }
                     break;
                 }
@@ -306,14 +320,14 @@ impl PixelPickerApp {
         let mon_y = monitor.y().ok()?;
         let mon_width = monitor.width().ok()?;
         let mon_height = monitor.height().ok()?;
-        
+
         let relative_x = screen_x - mon_x;
         let relative_y = screen_y - mon_y;
         let scale_x = image.width() as f64 / mon_width as f64;
         let scale_y = image.height() as f64 / mon_height as f64;
         let image_x = (relative_x as f64 * scale_x).round() as u32;
         let image_y = (relative_y as f64 * scale_y).round() as u32;
-        
+
         if image_x < image.width() && image_y < image.height() {
             let pixel = image.get_pixel(image_x, image_y);
             Some(Color::from_rgb(
@@ -338,12 +352,12 @@ impl PixelPickerApp {
         let mon_y = monitor.y().ok()?;
         let mon_width = monitor.width().ok()?;
         let mon_height = monitor.height().ok()?;
-        
+
         let half_size = (size / 2) as i32;
         let mut rgb_data = Vec::new();
         let scale_x = image.width() as f64 / mon_width as f64;
         let scale_y = image.height() as f64 / mon_height as f64;
-        
+
         for dy in -half_size..=half_size {
             for dx in -half_size..=half_size {
                 let sample_x = screen_x + dx;
@@ -399,7 +413,8 @@ impl<Message> canvas::Program<Message> for PreviewRenderer {
                     let r = self.rgb_data[idx];
                     let g = self.rgb_data[idx + 1];
                     let b = self.rgb_data[idx + 2];
-                    let color = Color::from_rgb(r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0);
+                    let color =
+                        Color::from_rgb(r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0);
 
                     let cell_rect = Rectangle::new(
                         Point::new(x as f32 * cell_size, y as f32 * cell_size),

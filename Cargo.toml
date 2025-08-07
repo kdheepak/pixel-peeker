@@ -11,8 +11,12 @@ readme = "README.md"
 
 [dependencies]
 device_query = "4.0.1"
-iced = { version = "0.13.1", features = ["canvas", "image", "tokio", "web-colors"] }
-tokio = { version = "1.47", features = ["full"] }
+iced = { version = "0.13.1", features = [
+  "canvas",
+  "image",
+  "tokio",
+  "web-colors",
+] }
 xcap = { version = "0.6.2", features = ["image"] }
 
 [profile.release]
