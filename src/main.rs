@@ -151,7 +151,7 @@ impl PixelPickerApp {
     }
 
     fn view(&self) -> Element<'_, Message> {
-        let title = text("PixelPicker")
+        let title = text("Pixel Picker")
             .size(20)
             .color(Color::from_rgb(1.0, 1.0, 0.8));
 
