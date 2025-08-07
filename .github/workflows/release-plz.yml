@@ -24,10 +24,6 @@ jobs:
           fetch-depth: 0
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-      - name: Install Dependencies
-        run: |
-          sudo apt update
-          sudo apt install libpipewire-0.3-dev libegl1-mesa-dev libgl1-mesa-dev libgbm-dev
       - name: Run release-plz
         uses: release-plz/action@v0.5
         with:
@@ -54,10 +50,6 @@ jobs:
           fetch-depth: 0
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-      - name: Install Dependencies
-        run: |
-          sudo apt update
-          sudo apt install libpipewire-0.3-dev libegl1-mesa-dev libgl1-mesa-dev libgbm-dev
       - name: Run release-plz
         uses: release-plz/action@v0.5
         with:
