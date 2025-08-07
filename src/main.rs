@@ -9,7 +9,6 @@ use std::time::Instant;
 use xcap::Monitor;
 
 const PREVIEW_SIZE: u32 = 21;
-const CAPTURE_THROTTLE_MS: u128 = 50;
 const MAX_COLOR_HISTORY: usize = 10;
 const PREVIEW_CANVAS_SIZE: f32 = 168.0;
 
@@ -74,7 +73,6 @@ struct App {
     frozen_color: Option<ColorInfo>,
     input_state: InputState,
     color_history: Vec<Color>,
-    last_capture_time: Option<Instant>,
     zoom_factor: f32,
 }
 
@@ -85,7 +83,6 @@ impl Default for App {
             frozen_color: None,
             input_state: InputState::default(),
             color_history: Vec::new(),
-            last_capture_time: None,
             zoom_factor: 1.0,
         }
     }
@@ -186,7 +183,7 @@ impl App {
             InputEvent::None => {}
         }
 
-        if self.is_frozen() || !self.should_capture() {
+        if self.is_frozen() {
             return;
         }
 
@@ -205,17 +202,6 @@ impl App {
 
     fn is_frozen(&self) -> bool {
         self.frozen_color.is_some()
-    }
-
-    fn should_capture(&mut self) -> bool {
-        let now = Instant::now();
-        if let Some(last_capture) = self.last_capture_time {
-            if now.duration_since(last_capture).as_millis() < CAPTURE_THROTTLE_MS {
-                return false;
-            }
-        }
-        self.last_capture_time = Some(now);
-        true
     }
 
     fn get_mouse_position(&self) -> (i32, i32) {
