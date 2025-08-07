@@ -132,6 +132,17 @@ impl App {
             .width(Length::Fill)
             .height(Length::Fill)
             .padding(20)
+            .style(if self.is_frozen() {
+                |_: &Theme| container::Style {
+                    background: Some(Background::Color(Color::from_rgb(0.1, 0.1, 0.2))),
+                    ..Default::default()
+                }
+            } else {
+                |_: &Theme| container::Style {
+                    background: Some(Background::Color(Color::from_rgb(0.05, 0.05, 0.05))),
+                    ..Default::default()
+                }
+            })
             .into()
     }
 
