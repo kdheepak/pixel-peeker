@@ -245,6 +245,13 @@ impl PixelPickerApp {
 
         // Handle freeze/unfreeze logic first
         if just_pressed {
+            // If already frozen, capture new color at current position and refreeze
+            if self.frozen_position.is_some() {
+                // Temporarily unfreeze to capture current color
+                self.frozen_position = None;
+                self.capture_current_color(x, y);
+            }
+
             self.frozen_position = Some((x, y));
             // Don't immediately capture when freezing, use the last known values
             if let (Some(color), Some(preview)) = (self.selected_color, self.preview_image.clone())
@@ -272,6 +279,44 @@ impl PixelPickerApp {
         }
 
         // Try to capture screen - but limit frequency to avoid performance issues
+        if let Ok(monitors) = Monitor::all() {
+            for monitor in monitors {
+                let mon_x = match monitor.x().ok() {
+                    Some(v) => v,
+                    None => continue,
+                };
+                let mon_y = match monitor.y().ok() {
+                    Some(v) => v,
+                    None => continue,
+                };
+                let mon_width = match monitor.width().ok() {
+                    Some(v) => v,
+                    None => continue,
+                };
+                let mon_height = match monitor.height().ok() {
+                    Some(v) => v,
+                    None => continue,
+                };
+
+                if x >= mon_x
+                    && x < mon_x + mon_width as i32
+                    && y >= mon_y
+                    && y < mon_y + mon_height as i32
+                {
+                    // Try to capture, but don't block if it fails
+                    if let Ok(image) = monitor.capture_image() {
+                        self.selected_color = self.get_color_from_image(&monitor, &image, x, y);
+                        self.preview_image =
+                            self.get_preview_from_image(&monitor, &image, x, y, 21);
+                    }
+                    break;
+                }
+            }
+        }
+    }
+
+    fn capture_current_color(&mut self, x: i32, y: i32) {
+        // Try to capture screen at the specified position
         if let Ok(monitors) = Monitor::all() {
             for monitor in monitors {
                 let mon_x = match monitor.x().ok() {
