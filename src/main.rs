@@ -760,43 +760,35 @@ fn create_preview(
 }
 
 fn format_color(color: &Color, format: &ColorFormat) -> String {
-    let srgb = Srgb::new(color.r, color.g, color.b);
+    let r = (color.r * 255.0).round() as u8;
+    let g = (color.g * 255.0).round() as u8;
+    let b = (color.b * 255.0).round() as u8;
 
     match format {
-        ColorFormat::Rgb => {
-            let r = (color.r * 255.0) as u8;
-            let g = (color.g * 255.0) as u8;
-            let b = (color.b * 255.0) as u8;
-            format!("RGB: ({}, {}, {})", r, g, b)
-        }
-        ColorFormat::Hex => {
-            let r = (color.r * 255.0) as u8;
-            let g = (color.g * 255.0) as u8;
-            let b = (color.b * 255.0) as u8;
-            format!("HEX: #{:02X}{:02X}{:02X}", r, g, b)
-        }
+        ColorFormat::Rgb => format!("rgb({}, {}, {})", r, g, b),
+        ColorFormat::Hex => format!("#{:02X}{:02X}{:02X}", r, g, b),
         ColorFormat::Hsv => {
-            let hsv: Hsv = srgb.into_color();
+            let hsv: Hsv = Srgb::new(color.r, color.g, color.b).into_color();
             format!(
-                "HSV: ({:.0}°, {:.0}%, {:.0}%)",
+                "hsv({:.0}deg, {:.0}%, {:.0}%)",
                 hsv.hue.into_positive_degrees(),
                 hsv.saturation * 100.0,
                 hsv.value * 100.0
             )
         }
         ColorFormat::Hsl => {
-            let hsl: Hsl = srgb.into_color();
+            let hsl: Hsl = Srgb::new(color.r, color.g, color.b).into_color();
             format!(
-                "HSL: ({:.0}°, {:.0}%, {:.0}%)",
+                "hsl({:.0}deg, {:.0}%, {:.0}%)",
                 hsl.hue.into_positive_degrees(),
                 hsl.saturation * 100.0,
                 hsl.lightness * 100.0
             )
         }
         ColorFormat::Oklch => {
-            let oklch: Oklch = srgb.into_color();
+            let oklch: Oklch = Srgb::new(color.r, color.g, color.b).into_color();
             format!(
-                "OKLCH: (L: {:.2}, C: {:.2}, h: {:.1}°)",
+                "oklch({:.2} {:.2} {:.1}deg)",
                 oklch.l,
                 oklch.chroma,
                 oklch.hue.into_positive_degrees()
