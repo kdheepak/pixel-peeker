@@ -354,13 +354,13 @@ impl App {
             .padding(4)
             .into();
 
-        let _zoom_slider = self.create_zoom_slider();
+        let zoom_slider = self.create_zoom_slider();
 
         let info_column = self.create_color_info_column(color_info);
 
         Row::new()
             .spacing(20)
-            .push(Column::new().push(preview_with_shadow))
+            .push(Column::new().push(preview_with_shadow).push(zoom_slider))
             .push(info_column)
             .into()
     }
@@ -624,7 +624,18 @@ impl<Message> canvas::Program<Message> for PreviewRenderer {
         _cursor: mouse::Cursor,
     ) -> Vec<iced::widget::canvas::Geometry> {
         let mut frame = iced::widget::canvas::Frame::new(renderer, bounds.size());
-        let cell_size = (bounds.width / self.width as f32) * self.zoom_factor;
+
+        // Calculate the base cell size to fit the canvas
+        let base_cell_size = bounds.width / self.width as f32;
+        let zoomed_cell_size = base_cell_size * self.zoom_factor;
+
+        // Calculate the total size of the zoomed grid
+        let total_grid_width = self.width as f32 * zoomed_cell_size;
+        let total_grid_height = self.height as f32 * zoomed_cell_size;
+
+        // Calculate offset to center the grid in the canvas
+        let offset_x = (bounds.width - total_grid_width) / 2.0;
+        let offset_y = (bounds.height - total_grid_height) / 2.0;
 
         for y in 0..self.height {
             for x in 0..self.width {
@@ -637,15 +648,18 @@ impl<Message> canvas::Program<Message> for PreviewRenderer {
                     );
 
                     let cell_rect = Rectangle::new(
-                        Point::new(x as f32 * cell_size, y as f32 * cell_size),
-                        Size::new(cell_size, cell_size),
+                        Point::new(
+                            offset_x + x as f32 * zoomed_cell_size,
+                            offset_y + y as f32 * zoomed_cell_size,
+                        ),
+                        Size::new(zoomed_cell_size, zoomed_cell_size),
                     );
 
                     frame.fill_rectangle(cell_rect.position(), cell_rect.size(), color);
 
-                    // Draw crosshair at center
+                    // Draw crosshair at center pixel (where the actual mouse cursor is)
                     if x == self.width / 2 && y == self.height / 2 {
-                        self.draw_crosshair(&mut frame, cell_rect, cell_size);
+                        self.draw_crosshair(&mut frame, cell_rect, zoomed_cell_size);
                     }
                 }
             }
@@ -664,8 +678,11 @@ impl PreviewRenderer {
     ) {
         let center = cell_rect.center();
         let half = cell_size / 2.0;
+
+        // Use a contrasting color that's visible on both light and dark backgrounds
+        let crosshair_color = Color::from_rgb(1.0, 0.0, 0.0); // Red for better visibility
         let stroke = iced::widget::canvas::Stroke::default()
-            .with_color(Color::WHITE)
+            .with_color(crosshair_color)
             .with_width(2.0);
 
         // Vertical line
@@ -684,6 +701,13 @@ impl PreviewRenderer {
                 Point::new(center.x + half, center.y),
             ),
             stroke,
+        );
+
+        // Optional: Add a small center dot for even better precision
+        let center_dot_radius = 1.5;
+        frame.fill(
+            &iced::widget::canvas::Path::circle(center, center_dot_radius),
+            crosshair_color,
         );
     }
 }
