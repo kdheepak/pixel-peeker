@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.1](https://github.com/kdheepak/pixel-picker/compare/v0.2.0...v0.2.1) - 2025-08-07
+
+### Added
+
+- *(pixel-picker)* capture and preview only region around cursor for color selection
+
+### Fixed
+
+- *(ui)* update app title spacing in main view
+
+### Other
+
+- *(main)* simplify app state and modularize color picking logic
+
 ## [0.2.0](https://github.com/kdheepak/pixel-picker/compare/v0.1.1...v0.2.0) - 2025-08-07
 
 ### Added
