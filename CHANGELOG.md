@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0](https://github.com/kdheepak/pixel-picker/compare/v0.1.1...v0.2.0) - 2025-08-07
+
+### Added
+
+- *(ui)* add copy buttons and display for HSV, HSL, and CMYK color formats
+- *(app)* add capture_current_color to refreeze and capture color at position
+- *(ui)* freeze color selection when history color is clicked
+- *(main)* increase window height to 500 pixels
+- *(ui)* [**breaking**] replace egui/eframe with iced and tokio for new UI framework
+- *(ui)* add crosshair to center cell in pixel grid
+- *(ui)* add color history with swatches and copy-to-clipboard feature
+- *(main)* add device_state field to PixelPickerApp and update usage
+
+### Fixed
+
+- *(main)* update application name to "Pixel Picker"
+
+### Other
+
+- *(readme)* update project name to pixel-picker
+- Update README.md
+- *(main)* update window settings and remove unused tokio dependency
+- *(deps)* update iced and tokio to latest versions and refactor for new iced API
+- *(main)* inline color and preview helpers for monitor capture
+
 ## [0.1.1](https://github.com/kdheepak/pixel-picker/compare/v0.1.0...v0.1.1) - 2025-08-06
 
 ### Other
