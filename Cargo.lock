@@ -3465,6 +3465,7 @@ version = "0.2.1"
 dependencies = [
  "device_query",
  "iced",
+ "palette",
  "pretty_assertions",
  "xcap",
 ]

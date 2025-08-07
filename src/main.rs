@@ -4,6 +4,7 @@ use iced::{
     Background, Border, Color, Element, Length, Point, Rectangle, Renderer, Size, Subscription,
     Task, Theme, mouse, window,
 };
+use palette::{Hsl, Hsv, IntoColor, Oklch, Srgb};
 use std::time::Instant;
 use xcap::Monitor;
 
@@ -50,7 +51,7 @@ pub enum ColorFormat {
     Hex,
     Hsv,
     Hsl,
-    Cmyk,
+    Oklch,
 }
 
 #[derive(Debug, Clone)]
@@ -333,7 +334,7 @@ impl App {
             ColorFormat::Hex,
             ColorFormat::Hsv,
             ColorFormat::Hsl,
-            ColorFormat::Cmyk,
+            ColorFormat::Oklch,
         ] {
             column = column.push(self.create_color_row(&color_info.color, format));
         }
@@ -520,29 +521,46 @@ fn create_preview(
 }
 
 fn format_color(color: &Color, format: &ColorFormat) -> String {
-    let r = (color.r * 255.0) as u8;
-    let g = (color.g * 255.0) as u8;
-    let b = (color.b * 255.0) as u8;
+    let srgb = Srgb::new(color.r, color.g, color.b);
 
     match format {
-        ColorFormat::Rgb => format!("RGB: ({}, {}, {})", r, g, b),
-        ColorFormat::Hex => format!("HEX: #{:02X}{:02X}{:02X}", r, g, b),
+        ColorFormat::Rgb => {
+            let r = (color.r * 255.0) as u8;
+            let g = (color.g * 255.0) as u8;
+            let b = (color.b * 255.0) as u8;
+            format!("RGB: ({}, {}, {})", r, g, b)
+        }
+        ColorFormat::Hex => {
+            let r = (color.r * 255.0) as u8;
+            let g = (color.g * 255.0) as u8;
+            let b = (color.b * 255.0) as u8;
+            format!("HEX: #{:02X}{:02X}{:02X}", r, g, b)
+        }
         ColorFormat::Hsv => {
-            let (h, s, v) = rgb_to_hsv(r, g, b);
-            format!("HSV: ({:.0}°, {:.0}%, {:.0}%)", h, s * 100.0, v * 100.0)
+            let hsv: Hsv = srgb.into_color();
+            format!(
+                "HSV: ({:.0}°, {:.0}%, {:.0}%)",
+                hsv.hue.into_positive_degrees(),
+                hsv.saturation * 100.0,
+                hsv.value * 100.0
+            )
         }
         ColorFormat::Hsl => {
-            let (h, s, l) = rgb_to_hsl(r, g, b);
-            format!("HSL: ({:.0}°, {:.0}%, {:.0}%)", h, s * 100.0, l * 100.0)
-        }
-        ColorFormat::Cmyk => {
-            let (c, m, y, k) = rgb_to_cmyk(r, g, b);
+            let hsl: Hsl = srgb.into_color();
             format!(
-                "CMYK: ({:.0}%, {:.0}%, {:.0}%, {:.0}%)",
-                c * 100.0,
-                m * 100.0,
-                y * 100.0,
-                k * 100.0
+                "HSL: ({:.0}°, {:.0}%, {:.0}%)",
+                hsl.hue.into_positive_degrees(),
+                hsl.saturation * 100.0,
+                hsl.lightness * 100.0
+            )
+        }
+        ColorFormat::Oklch => {
+            let oklch: Oklch = srgb.into_color();
+            format!(
+                "OKLCH: (L: {:.2}, C: {:.2}, h: {:.1}°)",
+                oklch.l,
+                oklch.chroma,
+                oklch.hue.into_positive_degrees()
             )
         }
     }
@@ -646,81 +664,4 @@ impl<Message> canvas::Program<Message> for EmptyRenderer {
         let frame = iced::widget::canvas::Frame::new(renderer, bounds.size());
         vec![frame.into_geometry()]
     }
-}
-
-// Color conversion functions
-fn rgb_to_hsv(r: u8, g: u8, b: u8) -> (f32, f32, f32) {
-    let r = r as f32 / 255.0;
-    let g = g as f32 / 255.0;
-    let b = b as f32 / 255.0;
-
-    let max = r.max(g.max(b));
-    let min = r.min(g.min(b));
-    let delta = max - min;
-
-    let h = if delta < f32::EPSILON {
-        0.0
-    } else if (max - r).abs() < f32::EPSILON {
-        60.0 * (((g - b) / delta) % 6.0)
-    } else if (max - g).abs() < f32::EPSILON {
-        60.0 * ((b - r) / delta + 2.0)
-    } else {
-        60.0 * ((r - g) / delta + 4.0)
-    };
-
-    let h = if h < 0.0 { h + 360.0 } else { h };
-    let s = if max < f32::EPSILON { 0.0 } else { delta / max };
-    let v = max;
-
-    (h, s, v)
-}
-
-fn rgb_to_hsl(r: u8, g: u8, b: u8) -> (f32, f32, f32) {
-    let r = r as f32 / 255.0;
-    let g = g as f32 / 255.0;
-    let b = b as f32 / 255.0;
-
-    let max = r.max(g.max(b));
-    let min = r.min(g.min(b));
-    let delta = max - min;
-    let l = (max + min) / 2.0;
-
-    let s = if delta < f32::EPSILON {
-        0.0
-    } else if l < 0.5 {
-        delta / (max + min)
-    } else {
-        delta / (2.0 - max - min)
-    };
-
-    let h = if delta < f32::EPSILON {
-        0.0
-    } else if (max - r).abs() < f32::EPSILON {
-        60.0 * (((g - b) / delta) % 6.0)
-    } else if (max - g).abs() < f32::EPSILON {
-        60.0 * ((b - r) / delta + 2.0)
-    } else {
-        60.0 * ((r - g) / delta + 4.0)
-    };
-
-    let h = if h < 0.0 { h + 360.0 } else { h };
-    (h, s, l)
-}
-
-fn rgb_to_cmyk(r: u8, g: u8, b: u8) -> (f32, f32, f32, f32) {
-    let r = r as f32 / 255.0;
-    let g = g as f32 / 255.0;
-    let b = b as f32 / 255.0;
-
-    let k = 1.0 - r.max(g.max(b));
-
-    if k >= 1.0 {
-        return (0.0, 0.0, 0.0, 1.0);
-    }
-
-    let c = (1.0 - r - k) / (1.0 - k);
-    let m = (1.0 - g - k) / (1.0 - k);
-    let y = (1.0 - b - k) / (1.0 - k);
-
-    (c, m, y, k)
 }
