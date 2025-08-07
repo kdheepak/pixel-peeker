@@ -82,13 +82,12 @@ impl PixelPickerApp {
                 }
             }
             Message::HistoryColorClicked(color) => {
-                let hex_string = format!(
-                    "#{:02X}{:02X}{:02X}",
-                    (color.r * 255.0) as u8,
-                    (color.g * 255.0) as u8,
-                    (color.b * 255.0) as u8
-                );
-                iced::clipboard::write(hex_string)
+                // Freeze the selected color from history
+                self.selected_color = Some(color);
+                self.frozen_color = Some(color);
+                self.frozen_position = Some((0, 0)); // Dummy position to indicate frozen state
+                self.frozen_preview = None; // No preview needed for history colors
+                Task::none()
             }
         }
     }
