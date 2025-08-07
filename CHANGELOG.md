@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0](https://github.com/kdheepak/pixel-picker/compare/v0.2.1...v0.3.0) - 2025-08-07
+
+### Added
+
+- *(preview-renderer)* improve crosshair visibility with outlined lines and dot
+- *(ui)* add zoom slider and improve grid centering and crosshair visibility
+- *(ui)* add shadow and border to preview container
+- *(ui)* add zoom slider for preview canvas
+- *(ui)* add dynamic container background color based on frozen state
+- *(color)* [**breaking**] add oklch color format using palette crate and remove cmyk
+
+### Fixed
+
+- *(capture-region)* adjust preview region clamping and pixel offset calculation
+
+### Other
+
+- *(app)* remove capture throttling logic and related fields
+
 ## [0.2.1](https://github.com/kdheepak/pixel-picker/compare/v0.2.0...v0.2.1) - 2025-08-07
 
 ### Added
