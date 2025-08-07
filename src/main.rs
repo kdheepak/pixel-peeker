@@ -679,35 +679,57 @@ impl PreviewRenderer {
         let center = cell_rect.center();
         let half = cell_size / 2.0;
 
-        // Use a contrasting color that's visible on both light and dark backgrounds
-        let crosshair_color = Color::from_rgb(1.0, 0.0, 0.0); // Red for better visibility
-        let stroke = iced::widget::canvas::Stroke::default()
-            .with_color(crosshair_color)
+        // Background stroke (thicker, contrasting color)
+        let bg_stroke = iced::widget::canvas::Stroke::default()
+            .with_color(Color::WHITE)
+            .with_width(4.0);
+
+        // Foreground stroke (thinner, main color)
+        let fg_stroke = iced::widget::canvas::Stroke::default()
+            .with_color(Color::BLACK)
             .with_width(2.0);
 
-        // Vertical line
+        // Draw background lines (thicker)
         frame.stroke(
             &iced::widget::canvas::Path::line(
                 Point::new(center.x, center.y - half),
                 Point::new(center.x, center.y + half),
             ),
-            stroke,
+            bg_stroke,
         );
-
-        // Horizontal line
         frame.stroke(
             &iced::widget::canvas::Path::line(
                 Point::new(center.x - half, center.y),
                 Point::new(center.x + half, center.y),
             ),
-            stroke,
+            bg_stroke,
         );
 
-        // Optional: Add a small center dot for even better precision
-        let center_dot_radius = 1.5;
+        // Draw foreground lines (thinner)
+        frame.stroke(
+            &iced::widget::canvas::Path::line(
+                Point::new(center.x, center.y - half),
+                Point::new(center.x, center.y + half),
+            ),
+            fg_stroke,
+        );
+        frame.stroke(
+            &iced::widget::canvas::Path::line(
+                Point::new(center.x - half, center.y),
+                Point::new(center.x + half, center.y),
+            ),
+            fg_stroke,
+        );
+
+        // Center dot with outline
+        let dot_radius = 2.0;
         frame.fill(
-            &iced::widget::canvas::Path::circle(center, center_dot_radius),
-            crosshair_color,
+            &iced::widget::canvas::Path::circle(center, dot_radius),
+            Color::WHITE,
+        );
+        frame.fill(
+            &iced::widget::canvas::Path::circle(center, dot_radius - 0.5),
+            Color::BLACK,
         );
     }
 }
