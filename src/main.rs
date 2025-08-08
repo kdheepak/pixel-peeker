@@ -101,8 +101,6 @@ impl Settings {
         std::fs::write(&settings_path, contents)
             .map_err(|e| format!("Failed to write settings file: {}", e))?;
 
-        println!("Settings saved to: {:?}", settings_path);
-
         Ok(())
     }
 
