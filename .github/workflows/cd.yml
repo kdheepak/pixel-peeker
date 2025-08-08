@@ -1,8 +1,6 @@
 name: CD
 
 on:
-  release:
-    types: [published]
   push:
     tags:
       - 'v*.*.*'
@@ -11,9 +9,8 @@ permissions:
   contents: write
 
 jobs:
-  build:
-
-    name: Build and Release Binaries
+  build-and-upload:
+    name: Build and Upload Release Binaries
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -26,19 +23,30 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
+      # Linux dependencies if needed
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt update
+          sudo apt install -y libpipewire-0.3-dev libegl1-mesa-dev libgl1-mesa-dev libgbm-dev
+
       - name: Build binary
         run: cargo build --release
 
       - name: Prepare artifact
         run: |
           mkdir dist
-          cp target/release/pixel-peeker* dist/
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            cp target/release/pixel-peeker.exe dist/
+          else
+            cp target/release/pixel-peeker dist/
+          fi
         shell: bash
 
       - name: Upload release asset
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*
+          tag_name: ${{ github.ref_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
