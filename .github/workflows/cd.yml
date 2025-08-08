@@ -1,9 +1,8 @@
 name: CD
 
 on:
-  push:
-    tags:
-      - 'v*.*.*'
+  release:
+    types: [published]
 
 permissions:
   contents: write
@@ -23,7 +22,7 @@ jobs:
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
 
-      # Linux dependencies if needed
+      # Install Linux dependencies if needed
       - name: Install Linux dependencies
         if: runner.os == 'Linux'
         run: |
@@ -47,6 +46,5 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*
-          tag_name: ${{ github.ref_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
