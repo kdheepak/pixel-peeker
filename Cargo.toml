@@ -20,8 +20,8 @@ iced = { version = "0.13.1", features = [
 ] }
 palette = "0.7.6"
 serde = { version = "1.0.219", features = ["derive"] }
-serde_json = "1.0.142"
-xcap = { version = "0.6.2", features = ["image"] }
+serde_json = "1.0.143"
+xcap = { version = "0.7.0", features = ["image"] }
 
 [profile.release]
 debug = "full"
