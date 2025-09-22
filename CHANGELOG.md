@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.5](https://github.com/kdheepak/pixel-peeker/compare/v0.3.4...v0.3.5) - 2025-09-22
+
+### Other
+
+- *(deps)* bump the cargo-dependencies group across 1 directory with 3 updates ([#20](https://github.com/kdheepak/pixel-peeker/pull/20))
+- *(deps)* bump actions/github-script from 7 to 8 ([#19](https://github.com/kdheepak/pixel-peeker/pull/19))
+- *(deps)* bump actions/checkout from 4 to 5 ([#17](https://github.com/kdheepak/pixel-peeker/pull/17))
+- *(deps)* bump amannn/action-semantic-pull-request from 5 to 6 ([#16](https://github.com/kdheepak/pixel-peeker/pull/16))
+
 ## [0.3.4](https://github.com/kdheepak/pixel-peeker/compare/v0.3.3...v0.3.4) - 2025-08-08
 
 ### Other
