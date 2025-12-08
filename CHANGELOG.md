@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.6](https://github.com/kdheepak/pixel-peeker/compare/v0.3.5...v0.3.6) - 2025-12-08
+
+### Other
+
+- *(main)* simplify and condense code formatting for improved readability
+- *(deps)* bump iced in the cargo-dependencies group ([#25](https://github.com/kdheepak/pixel-peeker/pull/25))
+- *(deps)* bump actions/checkout from 5 to 6 ([#24](https://github.com/kdheepak/pixel-peeker/pull/24))
+- *(deps)* bump serde in the cargo-dependencies group ([#22](https://github.com/kdheepak/pixel-peeker/pull/22))
+
 ## [0.3.5](https://github.com/kdheepak/pixel-peeker/compare/v0.3.4...v0.3.5) - 2025-09-22
 
 ### Other
