@@ -1,8 +1,8 @@
 use device_query::{DeviceQuery, DeviceState, Keycode};
 use iced::widget::{Canvas, Column, Container, Row, button, canvas, container, text};
 use iced::{
-    Background, Border, Color, Element, Length, Point, Rectangle, Renderer, Size, Subscription,
-    Task, Theme, mouse, window,
+    Background, Border, Color, Element, Length, Point, Rectangle, Renderer, Size, Subscription, Task, Theme, mouse,
+    window,
 };
 use palette::{Hsl, Hsv, IntoColor, Oklch, Srgb};
 use serde::{Deserialize, Serialize};
@@ -45,11 +45,7 @@ struct SerializableColor {
 
 impl From<Color> for SerializableColor {
     fn from(color: Color) -> Self {
-        Self {
-            r: color.r,
-            g: color.g,
-            b: color.b,
-        }
+        Self { r: color.r, g: color.g, b: color.b }
     }
 }
 
@@ -88,57 +84,35 @@ impl Settings {
     }
 
     fn save(&self) -> Result<(), Box<dyn std::error::Error>> {
-        let settings_path =
-            Self::get_settings_path().ok_or("Could not determine settings directory")?;
+        let settings_path = Self::get_settings_path().ok_or("Could not determine settings directory")?;
 
-        // Create directory if it doesn't exist
         if let Some(parent) = settings_path.parent() {
-            std::fs::create_dir_all(parent)
-                .map_err(|e| format!("Failed to create settings directory: {}", e))?;
+            std::fs::create_dir_all(parent).map_err(|e| format!("Failed to create settings directory: {}", e))?;
         }
 
         let contents = serde_json::to_string_pretty(self)?;
-        std::fs::write(&settings_path, contents)
-            .map_err(|e| format!("Failed to write settings file: {}", e))?;
+        std::fs::write(&settings_path, contents).map_err(|e| format!("Failed to write settings file: {}", e))?;
 
         Ok(())
     }
 
     fn get_settings_path() -> Option<std::path::PathBuf> {
-        if let Some(project_dir) = directories::ProjectDirs::from("com", "kdheepak", "pixel-peeker")
-        {
+        if let Some(project_dir) = directories::ProjectDirs::from("com", "kdheepak", "pixel-peeker") {
             return Some(project_dir.config_dir().join("pixel-peeker.json"));
         }
 
         if let Some(base_dir) = directories::BaseDirs::new() {
-            return Some(
-                base_dir
-                    .config_dir()
-                    .join("pixel-peeker")
-                    .join("pixel-peeker.json"),
-            );
+            return Some(base_dir.config_dir().join("pixel-peeker").join("pixel-peeker.json"));
         }
 
         if let Some(user_dir) = directories::UserDirs::new() {
-            return Some(
-                user_dir
-                    .home_dir()
-                    .join(".config")
-                    .join("pixel-peeker")
-                    .join("pixel-peeker.json"),
-            );
+            return Some(user_dir.home_dir().join(".config").join("pixel-peeker").join("pixel-peeker.json"));
         }
 
-        // Try multiple fallback options for better compatibility
         if let Ok(config_dir) = std::env::var("XDG_CONFIG_HOME") {
-            return Some(
-                std::path::PathBuf::from(config_dir)
-                    .join("pixel-peeker")
-                    .join("pixel-peeker.json"),
-            );
+            return Some(std::path::PathBuf::from(config_dir).join("pixel-peeker").join("pixel-peeker.json"));
         }
 
-        // Final fallback to current directory
         Some(std::path::PathBuf::from("pixel-peeker.json"))
     }
 }
@@ -152,7 +126,7 @@ fn create_window_settings(settings: &Settings) -> window::Settings {
 
     window::Settings {
         size: Size::new(settings.window_width, settings.window_height),
-        position: position,
+        position,
         min_size: Some(Size::new(400.0, 300.0)),
         max_size: None,
         visible: true,
@@ -222,11 +196,7 @@ struct App {
 
 impl App {
     fn new(settings: Settings) -> Self {
-        let color_history: Vec<Color> = settings
-            .color_history
-            .iter()
-            .map(|c| Color::from(c.clone()))
-            .collect();
+        let color_history: Vec<Color> = settings.color_history.iter().map(|c| Color::from(c.clone())).collect();
 
         Self {
             current_color: None,
@@ -241,11 +211,7 @@ impl App {
     }
 
     fn update_settings(&mut self) {
-        self.settings.color_history = self
-            .color_history
-            .iter()
-            .map(|c| SerializableColor::from(*c))
-            .collect();
+        self.settings.color_history = self.color_history.iter().map(|c| SerializableColor::from(*c)).collect();
         self.settings.zoom_factor = self.zoom_factor;
         self.settings_dirty = true;
     }
@@ -265,65 +231,59 @@ impl App {
                 self.zoom_factor = zoom_factor;
                 self.update_settings();
                 Task::none()
-            }
+            },
             Message::WindowResized(size) => {
                 self.settings.window_width = size.width;
                 self.settings.window_height = size.height;
                 self.settings_dirty = true;
                 Task::none()
-            }
+            },
             Message::WindowMoved(position) => {
                 self.settings.window_x = Some(position.x as i32);
                 self.settings.window_y = Some(position.y as i32);
                 self.settings_dirty = true;
                 Task::none()
-            }
+            },
             Message::WindowEvent(event) => {
                 match event {
                     window::Event::Resized(size) => {
                         return self.update(Message::WindowResized(size));
-                    }
+                    },
                     window::Event::Moved(position) => {
                         return self.update(Message::WindowMoved(position));
-                    }
+                    },
                     window::Event::CloseRequested => {
-                        // Force save on exit
                         self.save_settings_if_dirty();
-                        // Also try to save synchronously as backup
                         if let Err(e) = self.settings.save() {
                             eprintln!("Final save failed: {}", e);
                         }
-                    }
-                    _ => {}
+                    },
+                    _ => {},
                 }
                 Task::none()
-            }
+            },
             Message::ToggleAlwaysOnTop => {
                 self.settings.always_on_top = !self.settings.always_on_top;
                 self.settings_dirty = true;
-                // Note: Changing always on top requires window recreation in most cases
-                // This would need additional implementation to take effect immediately
                 Task::none()
-            }
+            },
             Message::ClearHistory => {
                 self.color_history.clear();
                 self.update_settings();
-                // Save immediately when clearing history
                 self.save_settings_if_dirty();
                 Task::none()
-            }
+            },
             Message::SaveSettings => {
                 self.save_settings_if_dirty();
                 Task::none()
-            }
+            },
             Message::Tick(now) => {
                 self.update_color_picking();
-                // Save settings every 5 seconds if dirty
                 if self.settings_dirty && now.duration_since(self.last_save_time).as_secs() >= 5 {
                     self.save_settings_if_dirty();
                 }
                 Task::none()
-            }
+            },
             Message::CopyColor(format) => {
                 if let Some(color_info) = self.get_active_color() {
                     let text = format_color(&color_info.color, &format);
@@ -331,15 +291,11 @@ impl App {
                 } else {
                     Task::none()
                 }
-            }
+            },
             Message::HistoryColorClicked(color) => {
-                self.frozen_color = Some(ColorInfo {
-                    color,
-                    position: (0, 0),
-                    preview: None,
-                });
+                self.frozen_color = Some(ColorInfo { color, position: (0, 0), preview: None });
                 Task::none()
-            }
+            },
         }
     }
 
@@ -381,9 +337,7 @@ impl App {
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        Subscription::batch([
-            iced::time::every(std::time::Duration::from_millis(33)).map(Message::Tick)
-        ])
+        Subscription::batch([iced::time::every(std::time::Duration::from_millis(33)).map(Message::Tick)])
     }
 
     fn update_color_picking(&mut self) {
@@ -394,12 +348,12 @@ impl App {
             InputEvent::Freeze => {
                 self.handle_freeze(mouse_pos);
                 return;
-            }
+            },
             InputEvent::Unfreeze => {
                 self.frozen_color = None;
                 return;
-            }
-            InputEvent::None => {}
+            },
+            InputEvent::None => {},
         }
 
         if self.is_frozen() {
@@ -414,9 +368,7 @@ impl App {
     }
 
     fn get_display_position(&self) -> (i32, i32) {
-        self.get_active_color()
-            .map(|info| info.position)
-            .unwrap_or_else(|| self.get_mouse_position())
+        self.get_active_color().map(|info| info.position).unwrap_or_else(|| self.get_mouse_position())
     }
 
     fn is_frozen(&self) -> bool {
@@ -447,7 +399,6 @@ impl App {
 
     fn handle_freeze(&mut self, position: (i32, i32)) {
         if self.is_frozen() {
-            // Re-capture at current position before freezing again
             self.frozen_color = None;
             self.capture_at_position(position);
         }
@@ -455,7 +406,6 @@ impl App {
         if let Some(current) = &self.current_color {
             self.frozen_color = Some(current.clone());
             self.add_to_history(current.color);
-            // Save immediately when adding to history
             self.save_settings_if_dirty();
         }
     }
@@ -475,23 +425,15 @@ impl App {
         if let Ok(monitors) = Monitor::all() {
             for monitor in monitors {
                 if let Some(region) = self.calculate_capture_region(&monitor, x, y) {
-                    if let Ok(image) = monitor.capture_region(
-                        region.x as u32,
-                        region.y as u32,
-                        region.width,
-                        region.height,
-                    ) {
-                        // Adjust center pixel based on offset
+                    if let Ok(image) =
+                        monitor.capture_region(region.x as u32, region.y as u32, region.width, region.height)
+                    {
                         let center_x = PREVIEW_SIZE / 2 - region.offset_x;
                         let center_y = PREVIEW_SIZE / 2 - region.offset_y;
 
                         if let Some(color) = extract_color_at(&image, center_x, center_y) {
                             let preview = create_preview(&image, center_x, center_y);
-                            self.current_color = Some(ColorInfo {
-                                color,
-                                position,
-                                preview,
-                            });
+                            self.current_color = Some(ColorInfo { color, position, preview });
                         }
                         return;
                     }
@@ -505,19 +447,12 @@ impl App {
 
         let half_size = (PREVIEW_SIZE / 2) as i32;
 
-        // Start with ideal region centered at mouse
         let region_x = x - half_size;
         let region_y = y - half_size;
 
-        // Clamp region inside monitor bounds
-        let clamped_x = region_x
-            .max(bounds.x)
-            .min(bounds.x + bounds.width as i32 - PREVIEW_SIZE as i32);
-        let clamped_y = region_y
-            .max(bounds.y)
-            .min(bounds.y + bounds.height as i32 - PREVIEW_SIZE as i32);
+        let clamped_x = region_x.max(bounds.x).min(bounds.x + bounds.width as i32 - PREVIEW_SIZE as i32);
+        let clamped_y = region_y.max(bounds.y).min(bounds.y + bounds.height as i32 - PREVIEW_SIZE as i32);
 
-        // Calculate offset between requested and clamped (how much we shifted the region)
         let offset_x = (clamped_x - region_x).max(0) as u32;
         let offset_y = (clamped_y - region_y).max(0) as u32;
 
@@ -531,12 +466,8 @@ impl App {
         })
     }
 
-    // UI creation methods
     fn create_title(&self) -> Element<'_, Message> {
-        text("Pixel Peeker")
-            .size(20)
-            .color(Color::from_rgb(1.0, 1.0, 0.8))
-            .into()
+        text("Pixel Peeker").size(20).color(Color::from_rgb(1.0, 1.0, 0.8)).into()
     }
 
     fn create_preview_row(&self, color_info: &ColorInfo) -> Element<'_, Message> {
@@ -564,11 +495,7 @@ impl App {
                     offset: iced::Vector::new(4.0, 4.0),
                     blur_radius: 8.0,
                 },
-                border: Border {
-                    color: Color::from_rgb(0.3, 0.3, 0.3),
-                    width: 1.0,
-                    radius: 6.0.into(),
-                },
+                border: Border { color: Color::from_rgb(0.3, 0.3, 0.3), width: 1.0, radius: 6.0.into() },
                 background: Some(Background::Color(Color::from_rgb(0.1, 0.1, 0.1))),
                 ..Default::default()
             })
@@ -579,35 +506,18 @@ impl App {
 
         let info_column = self.create_color_info_column(color_info);
 
-        Row::new()
-            .spacing(20)
-            .push(Column::new().push(preview_with_shadow).push(zoom_slider))
-            .push(info_column)
-            .into()
+        Row::new().spacing(20).push(Column::new().push(preview_with_shadow).push(zoom_slider)).push(info_column).into()
     }
 
     fn create_color_info_column(&self, color_info: &ColorInfo) -> Element<'_, Message> {
         let mut column = Column::new()
             .spacing(5)
             .push(text("Mouse Position:").color(Color::from_rgb(1.0, 1.0, 0.8)))
-            .push(
-                text(format!(
-                    "({}, {})",
-                    color_info.position.0, color_info.position.1
-                ))
-                .size(14),
-            )
+            .push(text(format!("({}, {})", color_info.position.0, color_info.position.1)).size(14))
             .push(text("Picked Color:").color(Color::from_rgb(1.0, 1.0, 0.8)))
             .push(self.create_color_swatch(color_info.color));
 
-        // Add color format rows
-        for format in [
-            ColorFormat::Rgb,
-            ColorFormat::Hex,
-            ColorFormat::Hsv,
-            ColorFormat::Hsl,
-            ColorFormat::Oklch,
-        ] {
+        for format in [ColorFormat::Rgb, ColorFormat::Hex, ColorFormat::Hsv, ColorFormat::Hsl, ColorFormat::Oklch] {
             column = column.push(self.create_color_row(&color_info.color, format));
         }
 
@@ -618,11 +528,7 @@ impl App {
         container(text("   "))
             .style(move |_theme: &Theme| container::Style {
                 background: Some(Background::Color(color)),
-                border: Border {
-                    color: Color::from_rgb(0.5, 0.5, 0.5),
-                    width: 1.0,
-                    radius: 4.0.into(),
-                },
+                border: Border { color: Color::from_rgb(0.5, 0.5, 0.5), width: 1.0, radius: 4.0.into() },
                 shadow: Default::default(),
                 text_color: None,
             })
@@ -644,25 +550,16 @@ impl App {
     fn create_zoom_slider(&self) -> Element<'_, Message> {
         let zoom_ui = Column::new()
             .spacing(10)
-            .push(iced::widget::Text::new(format!(
-                "Zoom: {:.1}×",
-                self.zoom_factor
-            )))
+            .push(iced::widget::Text::new(format!("Zoom: {:.1}×", self.zoom_factor)))
             .push(iced::widget::slider(1.0..=5.0, self.zoom_factor, Message::ZoomFactor).step(0.1));
         zoom_ui.into()
     }
 
     fn create_status_text(&self) -> Element<'_, Message> {
         let (status_text, status_color) = if self.is_frozen() {
-            (
-                "Frozen (press ESC to unfreeze)",
-                Color::from_rgb(0.4, 0.7, 1.0),
-            )
+            ("Frozen (press ESC to unfreeze)", Color::from_rgb(0.4, 0.7, 1.0))
         } else {
-            (
-                "Live (press SPACE to freeze)",
-                Color::from_rgb(0.4, 1.0, 0.6),
-            )
+            ("Live (press SPACE to freeze)", Color::from_rgb(0.4, 1.0, 0.6))
         };
 
         text(status_text).color(status_color).into()
@@ -676,11 +573,7 @@ impl App {
                 .on_press(Message::HistoryColorClicked(color))
                 .style(move |_theme: &Theme, _status| button::Style {
                     background: Some(Background::Color(color)),
-                    border: Border {
-                        color: Color::from_rgb(0.5, 0.5, 0.5),
-                        width: 1.0,
-                        radius: 3.0.into(),
-                    },
+                    border: Border { color: Color::from_rgb(0.5, 0.5, 0.5), width: 1.0, radius: 3.0.into() },
                     shadow: Default::default(),
                     text_color: Color::BLACK,
                 })
@@ -689,10 +582,7 @@ impl App {
             history_row = history_row.push(color_button);
         }
 
-        Column::new()
-            .push(text("Color History:").color(Color::from_rgb(1.0, 1.0, 0.8)))
-            .push(history_row)
-            .into()
+        Column::new().push(text("Color History:").color(Color::from_rgb(1.0, 1.0, 0.8))).push(history_row).into()
     }
 }
 
@@ -735,21 +625,13 @@ struct CaptureRegion {
 fn extract_color_at(image: &xcap::image::RgbaImage, x: u32, y: u32) -> Option<Color> {
     if x < image.width() && y < image.height() {
         let pixel = image.get_pixel(x, y);
-        Some(Color::from_rgb(
-            pixel[0] as f32 / 255.0,
-            pixel[1] as f32 / 255.0,
-            pixel[2] as f32 / 255.0,
-        ))
+        Some(Color::from_rgb(pixel[0] as f32 / 255.0, pixel[1] as f32 / 255.0, pixel[2] as f32 / 255.0))
     } else {
         None
     }
 }
 
-fn create_preview(
-    image: &xcap::image::RgbaImage,
-    center_x: u32,
-    center_y: u32,
-) -> Option<PreviewData> {
+fn create_preview(image: &xcap::image::RgbaImage, center_x: u32, center_y: u32) -> Option<PreviewData> {
     let half_size = (PREVIEW_SIZE / 2) as i32;
     let mut rgb_data = Vec::with_capacity((PREVIEW_SIZE * PREVIEW_SIZE * 3) as usize);
 
@@ -766,18 +648,14 @@ fn create_preview(
                 let pixel = image.get_pixel(sample_x as u32, sample_y as u32);
                 [pixel[0], pixel[1], pixel[2]]
             } else {
-                [0, 0, 0] // Black for areas outside the captured region
+                [0, 0, 0]
             };
 
             rgb_data.extend_from_slice(&pixel_data);
         }
     }
 
-    Some(PreviewData {
-        rgb_data,
-        width: PREVIEW_SIZE,
-        height: PREVIEW_SIZE,
-    })
+    Some(PreviewData { rgb_data, width: PREVIEW_SIZE, height: PREVIEW_SIZE })
 }
 
 fn format_color(color: &Color, format: &ColorFormat) -> String {
@@ -796,7 +674,7 @@ fn format_color(color: &Color, format: &ColorFormat) -> String {
                 hsv.saturation * 100.0,
                 hsv.value * 100.0
             )
-        }
+        },
         ColorFormat::Hsl => {
             let hsl: Hsl = Srgb::new(color.r, color.g, color.b).into_color();
             format!(
@@ -805,16 +683,11 @@ fn format_color(color: &Color, format: &ColorFormat) -> String {
                 hsl.saturation * 100.0,
                 hsl.lightness * 100.0
             )
-        }
+        },
         ColorFormat::Oklch => {
             let oklch: Oklch = Srgb::new(color.r, color.g, color.b).into_color();
-            format!(
-                "oklch({:.2} {:.2} {:.1}deg)",
-                oklch.l,
-                oklch.chroma,
-                oklch.hue.into_positive_degrees()
-            )
-        }
+            format!("oklch({:.2} {:.2} {:.1}deg)", oklch.l, oklch.chroma, oklch.hue.into_positive_degrees())
+        },
     }
 }
 
@@ -838,15 +711,12 @@ impl<Message> canvas::Program<Message> for PreviewRenderer {
     ) -> Vec<iced::widget::canvas::Geometry> {
         let mut frame = iced::widget::canvas::Frame::new(renderer, bounds.size());
 
-        // Calculate the base cell size to fit the canvas
         let base_cell_size = bounds.width / self.width as f32;
         let zoomed_cell_size = base_cell_size * self.zoom_factor;
 
-        // Calculate the total size of the zoomed grid
         let total_grid_width = self.width as f32 * zoomed_cell_size;
         let total_grid_height = self.height as f32 * zoomed_cell_size;
 
-        // Calculate offset to center the grid in the canvas
         let offset_x = (bounds.width - total_grid_width) / 2.0;
         let offset_y = (bounds.height - total_grid_height) / 2.0;
 
@@ -861,16 +731,12 @@ impl<Message> canvas::Program<Message> for PreviewRenderer {
                     );
 
                     let cell_rect = Rectangle::new(
-                        Point::new(
-                            offset_x + x as f32 * zoomed_cell_size,
-                            offset_y + y as f32 * zoomed_cell_size,
-                        ),
+                        Point::new(offset_x + x as f32 * zoomed_cell_size, offset_y + y as f32 * zoomed_cell_size),
                         Size::new(zoomed_cell_size, zoomed_cell_size),
                     );
 
                     frame.fill_rectangle(cell_rect.position(), cell_rect.size(), color);
 
-                    // Draw crosshair at center pixel (where the actual mouse cursor is)
                     if x == self.width / 2 && y == self.height / 2 {
                         self.draw_crosshair(&mut frame, cell_rect, zoomed_cell_size);
                     }
@@ -883,26 +749,14 @@ impl<Message> canvas::Program<Message> for PreviewRenderer {
 }
 
 impl PreviewRenderer {
-    fn draw_crosshair(
-        &self,
-        frame: &mut iced::widget::canvas::Frame,
-        cell_rect: Rectangle,
-        cell_size: f32,
-    ) {
+    fn draw_crosshair(&self, frame: &mut iced::widget::canvas::Frame, cell_rect: Rectangle, cell_size: f32) {
         let center = cell_rect.center();
         let half = cell_size / 2.0;
 
-        // Background stroke (thicker, contrasting color)
-        let bg_stroke = iced::widget::canvas::Stroke::default()
-            .with_color(Color::WHITE)
-            .with_width(4.0);
+        let bg_stroke = iced::widget::canvas::Stroke::default().with_color(Color::WHITE).with_width(4.0);
 
-        // Foreground stroke (thinner, main color)
-        let fg_stroke = iced::widget::canvas::Stroke::default()
-            .with_color(Color::BLACK)
-            .with_width(2.0);
+        let fg_stroke = iced::widget::canvas::Stroke::default().with_color(Color::BLACK).with_width(2.0);
 
-        // Draw background lines (thicker)
         frame.stroke(
             &iced::widget::canvas::Path::line(
                 Point::new(center.x, center.y - half),
@@ -918,7 +772,6 @@ impl PreviewRenderer {
             bg_stroke,
         );
 
-        // Draw foreground lines (thinner)
         frame.stroke(
             &iced::widget::canvas::Path::line(
                 Point::new(center.x, center.y - half),
@@ -934,16 +787,9 @@ impl PreviewRenderer {
             fg_stroke,
         );
 
-        // Center dot with outline
         let dot_radius = 2.0;
-        frame.fill(
-            &iced::widget::canvas::Path::circle(center, dot_radius),
-            Color::WHITE,
-        );
-        frame.fill(
-            &iced::widget::canvas::Path::circle(center, dot_radius - 0.5),
-            Color::BLACK,
-        );
+        frame.fill(&iced::widget::canvas::Path::circle(center, dot_radius), Color::WHITE);
+        frame.fill(&iced::widget::canvas::Path::circle(center, dot_radius - 0.5), Color::BLACK);
     }
 }
 
