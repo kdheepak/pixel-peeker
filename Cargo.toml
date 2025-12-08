@@ -12,7 +12,7 @@ readme = "README.md"
 [dependencies]
 device_query = "4.0.1"
 directories = "6.0.0"
-iced = { version = "0.13.1", features = [
+iced = { version = "0.14.0", features = [
   "canvas",
   "image",
   "tokio",
