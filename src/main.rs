@@ -15,11 +15,14 @@ const PREVIEW_CANVAS_SIZE: f32 = 168.0;
 
 fn main() -> iced::Result {
     let settings = Settings::load();
-    iced::application("Pixel Peeker", App::update, App::view)
+    let window_settings = create_window_settings(&settings);
+
+    iced::application(move || App::new(settings.clone()), App::update, App::view)
+        .title("Pixel Peeker")
         .subscription(App::subscription)
-        .theme(|_| Theme::Dark)
-        .window(create_window_settings(&settings))
-        .run_with(move || (App::new(settings), Task::none()))
+        .theme(Theme::Dark)
+        .window(window_settings)
+        .run()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -129,14 +132,9 @@ fn create_window_settings(settings: &Settings) -> window::Settings {
         position,
         min_size: Some(Size::new(400.0, 300.0)),
         max_size: None,
-        visible: true,
-        resizable: true,
-        decorations: true,
-        transparent: false,
-        level: window::Level::AlwaysOnTop,
-        icon: None,
-        platform_specific: Default::default(),
+        level: if settings.always_on_top { window::Level::AlwaysOnTop } else { window::Level::Normal },
         exit_on_close_request: true,
+        ..window::Settings::default()
     }
 }
 
@@ -529,8 +527,7 @@ impl App {
             .style(move |_theme: &Theme| container::Style {
                 background: Some(Background::Color(color)),
                 border: Border { color: Color::from_rgb(0.5, 0.5, 0.5), width: 1.0, radius: 4.0.into() },
-                shadow: Default::default(),
-                text_color: None,
+                ..Default::default()
             })
             .width(Length::Fixed(60.0))
             .height(Length::Fixed(30.0))
@@ -574,8 +571,8 @@ impl App {
                 .style(move |_theme: &Theme, _status| button::Style {
                     background: Some(Background::Color(color)),
                     border: Border { color: Color::from_rgb(0.5, 0.5, 0.5), width: 1.0, radius: 3.0.into() },
-                    shadow: Default::default(),
                     text_color: Color::BLACK,
+                    ..Default::default()
                 })
                 .width(Length::Fixed(24.0))
                 .height(Length::Fixed(18.0));
