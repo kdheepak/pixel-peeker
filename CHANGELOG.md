@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.7](https://github.com/kdheepak/pixel-peeker/compare/v0.3.6...v0.3.7) - 2026-03-16
+
+### Other
+
+- *(deps)* bump marocchino/sticky-pull-request-comment from 2 to 3 ([#31](https://github.com/kdheepak/pixel-peeker/pull/31))
+
 ## [0.3.6](https://github.com/kdheepak/pixel-peeker/compare/v0.3.5...v0.3.6) - 2025-12-22
 
 ### Other
